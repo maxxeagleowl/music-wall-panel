@@ -15,25 +15,27 @@ export function ProgressBar({ progress, total, onSeek }: ProgressBarProps) {
   const percentage = total > 0 ? Math.min(100, (progress / total) * 100) : 0;
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between text-[0.68rem] tracking-[0.22em] text-white/[0.4]">
+    <div className="w-full space-y-1.5">
+      <div className="flex w-full items-center justify-between text-[0.6rem] tracking-[0.2em] text-white/30">
         <span>{formatTime(progress)}</span>
         <span>{formatTime(total)}</span>
       </div>
-      <div className="relative">
-        <div className="h-1.5 rounded-full bg-white/[0.08]">
+
+      <div className="relative h-7 w-full overflow-hidden">
+        <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-white/[0.12]">
           <div
-            className="h-1.5 rounded-full bg-gradient-to-r from-white/[0.5] to-white/[0.82] shadow-[0_0_14px_rgba(255,255,255,0.16)]"
+            className="h-px rounded-full bg-gradient-to-r from-white/40 to-white/70"
             style={{ width: `${percentage}%` }}
           />
         </div>
+
         <input
           type="range"
           min={0}
           max={Math.max(total, 1)}
           value={progress}
           onChange={(event) => onSeek(Number(event.target.value))}
-          className="absolute inset-[-16px_0] h-8 w-full cursor-pointer appearance-none bg-transparent"
+          className="absolute inset-0 h-7 w-full cursor-pointer appearance-none bg-transparent opacity-0"
         />
       </div>
     </div>

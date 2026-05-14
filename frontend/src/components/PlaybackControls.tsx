@@ -7,24 +7,24 @@ type PlaybackControlsProps = {
   onNext: () => void;
 };
 
-const buttonClass =
-  'grid h-14 w-14 place-items-center rounded-full border border-white/[0.06] bg-white/[0.04] text-white/76 transition hover:bg-white/[0.08] hover:text-white';
+const sideButtonClass =
+  'grid h-12 w-12 place-items-center rounded-full border border-white/[0.06] bg-white/[0.04] text-white/65 transition hover:bg-white/[0.08] hover:text-white active:scale-95';
 
 export function PlaybackControls({ isPlaying, onPrevious, onTogglePlay, onNext }: PlaybackControlsProps) {
   return (
     <div className="flex items-center justify-center gap-3">
-      <button type="button" className={buttonClass} onClick={onPrevious}>
-        <ChevronLeft size={24} />
+      <button type="button" className={sideButtonClass} onClick={onPrevious}>
+        <ChevronLeft size={20} />
       </button>
       <button
         type="button"
-        className="grid h-16 w-16 place-items-center rounded-full border border-white/[0.1] bg-white/[0.12] text-white shadow-[0_0_24px_rgba(255,255,255,0.08)] transition hover:bg-white/[0.16] hover:scale-[1.02]"
+        className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/[0.10] bg-white/[0.12] text-white shadow-[0_0_20px_rgba(255,255,255,0.07)] transition hover:bg-white/[0.16] hover:scale-[1.04] active:scale-95"
         onClick={onTogglePlay}
       >
-        {isPlaying ? <Pause size={24} /> : <Play size={24} className="ml-1" />}
+        {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
       </button>
-      <button type="button" className={buttonClass} onClick={onNext}>
-        <ChevronRight size={24} />
+      <button type="button" className={sideButtonClass} onClick={onNext}>
+        <ChevronRight size={20} />
       </button>
     </div>
   );
