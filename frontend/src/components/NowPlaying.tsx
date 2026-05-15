@@ -64,7 +64,7 @@ export function NowPlaying({
         </div>
 
         {/* Zone 2 — Cover */}
-        <div className="flex items-center justify-center pl-2 pr-6">
+        <div className="flex items-center justify-center pl-2 pr-0">
           <motion.div
             initial={{ rotate: 0 }}
             animate={isPlaying ? { scale: [1, 1.025, 1], rotate: 0 } : { scale: 1, rotate: 0 }}

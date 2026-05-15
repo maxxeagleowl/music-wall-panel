@@ -528,3 +528,6 @@ Create:
 - polished styling
 
 The result should already feel close to a real premium product.
+
+npm run dev
+press q + enter to quit

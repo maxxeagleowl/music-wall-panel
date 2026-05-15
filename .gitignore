@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+hardware_requierments.md
+seesion_1_notes.md
+.gitignore

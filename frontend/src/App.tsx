@@ -156,26 +156,35 @@ export default function App() {
           ? {
               ...room,
               volume,
-              muted: volume === 0 ? true : false
+              muted: volume === 0
             }
           : room
       )
     );
   };
 
-  const handleToggleMute = (roomId: string) => {
-    setRooms((current) =>
-      current.map((room) =>
-        room.id === roomId
-          ? {
-              ...room,
-              muted: !room.muted
-            }
-          : room
-      )
-    );
-  };
+const handleToggleMute = (roomId: string) => {
+  setRooms((current) =>
+    current.map((room) => {
+      if (room.id !== roomId) return room;
 
+      // Wenn aktuell hörbar → muten
+      if (room.volume > 0) {
+        return {
+          ...room,
+          previousVolume: room.volume,
+          volume: 0
+        };
+      }
+
+      // Wenn aktuell 0 → wiederherstellen
+      return {
+        ...room,
+        volume: room.previousVolume ?? 40
+      };
+    })
+  );
+};
   const handleToggleGroup = (roomId: string) => {
     setRooms((current) =>
       current.map((room) => {
@@ -194,13 +203,15 @@ export default function App() {
       <motion.div animate={{ y: [0, -14, 0] }} transition={{ duration: 12, repeat: Infinity, ease: 'easeInOut' }} className="pointer-events-none absolute left-[8%] top-[14%] h-72 w-72 rounded-full bg-white/5 blur-3xl" />
       <motion.div animate={{ y: [0, 12, 0] }} transition={{ duration: 15, repeat: Infinity, ease: 'easeInOut' }} className="pointer-events-none absolute right-[6%] top-[22%] h-80 w-80 rounded-full bg-slate-400/10 blur-3xl" />
 
-      <div className="relative mx-auto flex min-h-screen w-full max-w-[1920px] flex-col gap-3 p-3 lg:p-4">
-        <header className="grid h-[10%] min-h-[84px] items-center">
+      <div className="relative mx-auto grid min-h-screen w-full max-w-[1920px] gap-3 p-3 lg:p-4"
+        style={{ gridTemplateRows: '0.07fr 0.49fr 0.22fr 0.22fr' }}
+      >
+        <header className="min-h-0">
           <TopNav active={activeNav} onSelect={setActiveNav} />
         </header>
 
-        <main className="grid flex-1 grid-rows-[52%_20%_18%] gap-3">
-          <section className="min-h-[280px]">
+        <main className="contents">
+          <section className="min-h-0">
             <CoverFlow
               albums={mockAlbums}
               selectedAlbumId={selectedAlbumId}
@@ -217,7 +228,7 @@ export default function App() {
             />
           </section>
 
-          <section className="min-h-[220px]">
+          <section className="min-h-0">
             <NowPlaying
               album={nowPlayingAlbum}
               track={currentTrack}
@@ -232,7 +243,7 @@ export default function App() {
             />
           </section>
 
-          <section className="min-h-[200px]">
+          <section className="min-h-0">
             <SonosPanel rooms={rooms} onVolumeChange={handleVolumeChange} onToggleMute={handleToggleMute} onToggleGroup={handleToggleGroup} />
           </section>
         </main>

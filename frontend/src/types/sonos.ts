@@ -6,4 +6,5 @@ export type SonosRoom = {
   active: boolean;
   groupId: string | null;
   leader: boolean;
+  previousVolume?: number;
 };
