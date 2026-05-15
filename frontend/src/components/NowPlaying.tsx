@@ -31,7 +31,7 @@ export function NowPlaying({
 }: NowPlayingProps) {
   const currentIndex = album.tracks.findIndex(t => t.id === track.id);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-  const queueTracks = [1, 2, 3].map(offset => {
+  const queueTracks = [1, 2, 3, 4].map(offset => {
     const idx = (safeIndex + offset) % album.tracks.length;
     return album.tracks[idx];
   });
@@ -73,7 +73,7 @@ export function NowPlaying({
                 ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
                 : { duration: 0.5, ease: 'easeOut' }
             }
-            className="relative aspect-square w-[128px] rounded-2xl border border-white/[0.07] bg-panel-850 p-1.5 shadow-[0_10px_36px_rgba(0,0,0,0.38)]"
+            className="relative aspect-square w-[185px] overflow-hidden rounded-[1.9rem] shadow-[0_22px_64px_rgba(0,0,0,0.52)]"
           >
             <div
               className="relative h-full w-full overflow-hidden rounded-xl"

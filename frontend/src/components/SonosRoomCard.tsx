@@ -146,13 +146,11 @@ export function SonosRoomCard({
             onClick={() => onToggleMute(room.id)}
             className={[
               'grid h-[3.6rem] w-[3.6rem] place-items-center rounded-full border transition active:scale-95',
-              isInactive
+              !room.active
                 ? 'border-white/[0.04] bg-white/[0.02] text-white/25'
-                : isSilenced
-                  ? 'border-sky-300/[0.35] bg-sky-300/[0.14] text-sky-100'
-                  : isAudible
-                    ? 'border-sky-300/[0.35] bg-sky-300/[0.14] text-sky-100'
-                    : 'border-white/[0.08] bg-white/[0.04] text-white/50'
+                : room.volume === 0
+                  ? 'border-white/[0.08] bg-white/[0.04] text-white/40'
+                  : 'border-sky-300/[0.35] bg-sky-300/[0.14] text-sky-100 shadow-[0_0_18px_rgba(125,211,252,0.35)]'
             ].join(' ')}
           >
             {room.volume === 0 ? <VolumeX size={22} /> : <Volume2 size={22} />}

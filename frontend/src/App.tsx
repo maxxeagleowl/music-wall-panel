@@ -173,18 +173,23 @@ const handleToggleMute = (roomId: string) => {
         return {
           ...room,
           previousVolume: room.volume,
-          volume: 0
+          volume: 0,
+          muted: true
         };
       }
 
       // Wenn aktuell 0 → wiederherstellen
+      const restored = room.previousVolume ?? 40;
+
       return {
         ...room,
-        volume: room.previousVolume ?? 40
+        volume: restored,
+        muted: false
       };
     })
   );
 };
+
   const handleToggleGroup = (roomId: string) => {
     setRooms((current) =>
       current.map((room) => {
