@@ -74,7 +74,11 @@ const albumTracks = [
 ] as const;
 
 const albumMeta = [
-  ['Aster Lane', 'Nocturne Glass', 2025, 'Ambient / Electronica', 'Late evening focus', 'AN-01', 'linear-gradient(135deg, #4f6e9f 0%, #142033 52%, #07111c 100%)', 'linear-gradient(180deg, rgba(144,176,221,0.28), rgba(7, 17, 28, 0.85))', 'A1'],
+ ['Aster Lane', 'Nocturne Glass', 2025, 'Ambient / Electronica', 'Late evening focus', 'AN-01',
+  'linear-gradient(135deg, #5879ad 0%, #223650 58%, #142238 100%)',
+  'linear-gradient(180deg, rgba(155,190,238,0.24), rgba(20, 34, 56, 0.36))',
+  'A1'
+],
   ['Monument', 'Velvet Rooms', 2024, 'Downtempo / Soul', 'Warm low light', 'MN-02', 'linear-gradient(135deg, #7c5f4a 0%, #2d1f1d 44%, #0d0f12 100%)', 'linear-gradient(180deg, rgba(202,168,137,0.28), rgba(13, 15, 18, 0.88))', 'M2'],
   ['Northline', 'Signal Theory', 2025, 'Deep House / Leftfield', 'Driving precision', 'NL-03', 'linear-gradient(135deg, #6d86a8 0%, #1c2a3e 58%, #06080e 100%)', 'linear-gradient(180deg, rgba(165,193,233,0.24), rgba(6, 8, 14, 0.9))', 'N3'],
   ['Kairo', 'Apartment Sea', 2023, 'Indie / Chill', 'Soft city drift', 'KR-04', 'linear-gradient(135deg, #587c86 0%, #1f353d 48%, #060a0b 100%)', 'linear-gradient(180deg, rgba(154,198,205,0.22), rgba(6, 10, 11, 0.9))', 'K4'],

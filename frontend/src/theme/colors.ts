@@ -47,11 +47,11 @@ export const themeColors = {
     }
   },
   accent: {
-    bronze: '#b88443',
-    bronzeSoft: '#c99a5f',
+    bronze: '#9f6b36',
+    bronzeSoft: '#b88458',
     gold: '#dfbf7a',
-    goldSoft: '#f0d79f',
-    highlight: '#fff0c6'
+    goldSoft: '#c9ab79',
+    highlight: '#f3e4bf'
   }
 } as const;
 
@@ -178,8 +178,8 @@ export const themeEffects = {
   },
   glow: {
     soft: `0 0 18px ${rgba(themeColors.accent.goldSoft, 0.18)}`,
-    medium: `0 0 18px ${rgba(themeColors.accent.goldSoft, 0.32)}`,
-    strong: `0 0 24px ${rgba(themeColors.accent.goldSoft, 0.45)}`
+    medium: `0 0 16px ${rgba(themeColors.accent.goldSoft, 0.24)}`,
+    strong: `0 0 24px ${rgba(themeColors.accent.goldSoft, 0.34)}`
   },
   shadow: {
     panel: `0 14px 40px ${rgba(themeColors.overlay, 0.32)}`,
@@ -188,8 +188,8 @@ export const themeEffects = {
     hero: `0 22px 64px ${rgba(themeColors.overlay, 0.52)}`
   },
   gradient: {
-    accent: `linear-gradient(90deg, ${rgba(themeColors.accent.goldSoft, 0.96)}, ${rgba(themeColors.accent.bronzeSoft, 0.96)})`,
-    accentSoft: `linear-gradient(90deg, ${rgba(themeColors.accent.goldSoft, 0.68)}, ${rgba(themeColors.text.primary, 0.9)})`,
+    accent: `linear-gradient(180deg, ${rgba(themeColors.accent.goldSoft, 0.54)}, ${rgba(themeColors.accent.bronzeSoft, 0.82)})`,
+    accentSoft: `linear-gradient(90deg, ${rgba(themeColors.accent.goldSoft, 0.58)}, ${rgba(themeColors.text.primary, 0.82)})`,
     surface: `linear-gradient(180deg, ${rgba(themeColors.text.primary, 0.04)}, ${rgba(themeColors.overlay, 0.34)})`,
     surfaceReverse: `linear-gradient(180deg, ${rgba(themeColors.overlay, 0.94)}, ${rgba(themeColors.panelDeep, 0.9)})`
   },

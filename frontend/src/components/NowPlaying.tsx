@@ -73,8 +73,16 @@ export function NowPlaying({
         </div>
 
         {/* Zone 2 — Cover */}
-        <div className="flex items-center justify-center pl-2 pr-0">
+        <div className="relative items-center justify-center pl-2 pr-0">
+          <div
+            className="pointer-events-none absolute aspect-square w-[170px] rounded-full blur-2xl"
+            style={{
+              background: `radial-gradient(circle, ${rgba(themeColors.accent.bronzeSoft, 0.10)} 0%, transparent 35%)`
+            }}
+          />
+          
           <motion.div
+            
             initial={{ rotate: 0 }}
             animate={isPlaying ? { scale: [1, 1.025, 1], rotate: 0 } : { scale: 1, rotate: 0 }}
             transition={
@@ -82,35 +90,15 @@ export function NowPlaying({
                 ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
                 : { duration: 0.5, ease: 'easeOut' }
             }
-            className="relative aspect-square w-[185px] overflow-hidden rounded-[1.9rem]"
-            style={{ boxShadow: themeEffects.shadow.hero }}
+            className="relative aspect-square w-[168px] overflow-hidden rounded-[1.9rem]"
+            style={{
+              boxShadow: `none`
+            }}
           >
             <div
               className="relative h-full w-full overflow-hidden rounded-xl"
               style={{ background: `${album.accentSoft}, ${album.accent}` }}
-            >
-              <div
-                className="absolute inset-0"
-                style={{
-                  backgroundImage: [
-                    `radial-gradient(circle at top, ${rgba(themeColors.text.primary, 0.16)}, transparent 35%)`,
-                    `linear-gradient(180deg, ${rgba(themeColors.text.primary, 0.04)}, ${rgba(themeColors.overlay, 0.3)})`
-                  ].join(', ')
-                }}
-              />
-              <div className="absolute inset-0 grid place-items-center">
-                <div
-                  className="rounded-full px-3 py-2 text-center"
-                  style={{
-                    border: `1px solid ${rgba(themeColors.accent.goldSoft, 0.12)}`,
-                    backgroundColor: rgba(themeColors.overlay, 0.14)
-                  }}
-                >
-                <div className="font-display text-[0.7rem] tracking-[0.2em]" style={{ color: themeColors.neutral.text.primary }}>
-                    {album.coverText}
-                  </div>
-                </div>
-              </div>
+            >              
             </div>
           </motion.div>
         </div>
