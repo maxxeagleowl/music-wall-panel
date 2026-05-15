@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight, Pause, Play } from 'lucide-react';
+import { rgba, themeColors, themeEffects } from '../theme/colors';
 
 type PlaybackControlsProps = {
   isPlaying: boolean;
@@ -8,22 +9,46 @@ type PlaybackControlsProps = {
 };
 
 const sideButtonClass =
-  'grid h-12 w-12 place-items-center rounded-full border border-white/[0.06] bg-white/[0.04] text-white/65 transition hover:bg-white/[0.08] hover:text-white active:scale-95';
+  'grid h-12 w-12 place-items-center rounded-full transition hover:scale-[1.02] active:scale-95';
 
 export function PlaybackControls({ isPlaying, onPrevious, onTogglePlay, onNext }: PlaybackControlsProps) {
   return (
     <div className="flex items-center justify-center gap-3">
-      <button type="button" className={sideButtonClass} onClick={onPrevious}>
+      <button
+        type="button"
+        className={sideButtonClass}
+        style={{
+          border: themeEffects.neutral.border.soft,
+          backgroundColor: themeEffects.neutral.surface.elevated,
+          color: themeColors.neutral.text.secondary
+        }}
+        onClick={onPrevious}
+      >
         <ChevronLeft size={20} />
       </button>
       <button
         type="button"
-        className="grid h-[58px] w-[58px] place-items-center rounded-full border border-white/[0.10] bg-white/[0.12] text-white shadow-[0_0_20px_rgba(255,255,255,0.07)] transition hover:bg-white/[0.16] hover:scale-[1.04] active:scale-95"
+        className="grid h-[58px] w-[58px] place-items-center rounded-full transition hover:scale-[1.04] active:scale-95"
+        style={{
+          border: themeEffects.border.active,
+          backgroundImage: themeEffects.gradient.accent,
+          color: themeColors.neutral.text.inverse,
+          boxShadow: themeEffects.glow.medium
+        }}
         onClick={onTogglePlay}
       >
         {isPlaying ? <Pause size={20} /> : <Play size={20} className="ml-0.5" />}
       </button>
-      <button type="button" className={sideButtonClass} onClick={onNext}>
+      <button
+        type="button"
+        className={sideButtonClass}
+        style={{
+          border: themeEffects.neutral.border.soft,
+          backgroundColor: themeEffects.neutral.surface.elevated,
+          color: themeColors.neutral.text.secondary
+        }}
+        onClick={onNext}
+      >
         <ChevronRight size={20} />
       </button>
     </div>

@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import { Group, Volume2, VolumeX, Waves } from 'lucide-react';
 import type { SonosRoom } from '../types/sonos';
+import { rgba, themeColors, themeEffects } from '../theme/colors';
 
 type SonosRoomCardProps = {
   room: SonosRoom;
@@ -30,7 +31,12 @@ export function SonosRoomCard({
       whileTap={{ scale: 0.985 }}
       animate={{ opacity: room.active ? 1 : 0.55 }}
       transition={{ type: 'spring', stiffness: 170, damping: 24 }}
-      className="relative h-full rounded-[1.8rem] border border-white/[0.06] bg-gradient-to-b from-white/[0.045] to-white/[0.02] shadow-[0_14px_40px_rgba(0,0,0,0.32)]"
+      className="relative h-full rounded-[1.8rem]"
+      style={{
+        border: themeEffects.border.subtle,
+        backgroundImage: `linear-gradient(180deg, ${rgba(themeColors.text.primary, 0.045)}, ${rgba(themeColors.text.primary, 0.02)})`,
+        boxShadow: themeEffects.shadow.panel
+      }}
     >
       <div
         className="grid h-full w-full"
@@ -58,10 +64,13 @@ export function SonosRoomCard({
           <div
             className={[
               'grid h-[6.2rem] w-[6.2rem] place-items-center rounded-[1.3rem] border transition',
-              isInactive
-                ? 'border-white/[0.04] bg-black/[0.18] text-white/25'
-                : 'border-white/[0.06] bg-black/[0.22] text-white/70'
+              isInactive ? '' : ''
             ].join(' ')}
+            style={{
+              border: isInactive ? themeEffects.neutral.border.subtle : themeEffects.neutral.border.soft,
+              backgroundColor: isInactive ? themeEffects.neutral.surface.overlay : themeEffects.neutral.surface.deep,
+              color: isInactive ? themeColors.neutral.text.subtle : themeColors.neutral.text.secondary
+            }}
           >
             <Waves size={42} />
           </div>
@@ -71,19 +80,24 @@ export function SonosRoomCard({
         <div style={{ gridColumn: '3', gridRow: '2' }} className="flex flex-col justify-center gap-3">
           <div className="flex items-center gap-3">
             <span
-              className={[
-                'h-3 w-3 rounded-full transition',
+              className="h-3 w-3 rounded-full transition"
+              style={
                 isInactive
-                  ? 'bg-white/[0.18]'
-                  : 'bg-sky-300 shadow-[0_0_18px_rgba(125,211,252,0.95)]'
-              ].join(' ')}
+                  ? {
+                      backgroundColor: themeColors.neutral.text.subtle
+                    }
+                  : {
+                      backgroundColor: themeColors.accent.goldSoft,
+                      boxShadow: `0 0 18px ${rgba(themeColors.accent.goldSoft, 0.95)}`
+                    }
+              }
             />
-            <span className="text-[0.6rem] uppercase tracking-[0.32em] text-white/55">
+            <span className="text-[0.6rem] uppercase tracking-[0.32em]" style={{ color: themeColors.neutral.text.muted }}>
               {room.active ? 'Online' : 'Standby'}
             </span>
           </div>
 
-          <h3 className="font-display text-[1.5rem] leading-none tracking-[0.03em] text-white/95">
+          <h3 className="font-display text-[1.5rem] leading-none tracking-[0.03em]" style={{ color: themeColors.neutral.text.primary }}>
             {room.name}
           </h3>
         </div>
@@ -95,10 +109,18 @@ export function SonosRoomCard({
             onClick={() => onToggleGroup(room.id)}
             className={[
               'grid h-[3.6rem] w-[3.6rem] place-items-center rounded-full border transition active:scale-95',
-              isGrouped && room.active
-                ? 'border-sky-300/[0.35] bg-sky-300/[0.14] text-sky-100'
-                : 'border-white/[0.08] bg-white/[0.04] text-white/60'
+              ''
             ].join(' ')}
+            style={
+              isGrouped && room.active
+                ? {
+                    ...themeEffects.active.pill
+                  }
+                : {
+                    border: `1px solid ${rgba(themeColors.accent.goldSoft, 0.08)}`,
+                    backgroundColor: rgba(themeColors.text.primary, 0.04)
+                  }
+            }
           >
             <Group size={22} />
           </button>
@@ -107,21 +129,26 @@ export function SonosRoomCard({
         {/* VOLUME B4 + C4 */}
         <div style={{ gridColumn: '2 / 4', gridRow: '4' }} className="flex flex-col justify-center gap-2">
 
-          <span className="text-[0.6rem] uppercase tracking-[0.34em] text-white/40">
+              <span className="text-[0.6rem] uppercase tracking-[0.34em]" style={{ color: themeColors.neutral.text.soft }}>
             Volume
           </span>
 
-          <div className="relative h-5 w-full">
-            <div className="absolute left-0 right-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-white/[0.18]" />
+            <div className="relative h-5 w-full">
+            <div
+              className="absolute left-0 right-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full"
+              style={{ backgroundColor: themeColors.neutral.border.strong }}
+            />
 
             <motion.div
-              className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full bg-gradient-to-r from-sky-300/90 to-white"
+              className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full"
+              style={{ backgroundImage: themeEffects.gradient.accent }}
               animate={{ width: `${volumeWidth}%` }}
               transition={{ duration: 0.25 }}
             />
 
             <motion.div
-              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white"
+              className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full"
+              style={{ backgroundColor: themeColors.accent.goldSoft }}
               animate={{ left: `calc(${volumeWidth}% - 8px)` }}
               transition={{ duration: 0.25 }}
             />
@@ -144,14 +171,24 @@ export function SonosRoomCard({
           <button
             type="button"
             onClick={() => onToggleMute(room.id)}
-            className={[
-              'grid h-[3.6rem] w-[3.6rem] place-items-center rounded-full border transition active:scale-95',
+              className="grid h-[3.6rem] w-[3.6rem] place-items-center rounded-full border transition active:scale-95"
+            style={
               !room.active
-                ? 'border-white/[0.04] bg-white/[0.02] text-white/25'
+                ? {
+                    border: themeEffects.neutral.border.subtle,
+                    backgroundColor: themeEffects.neutral.surface.base,
+                    color: themeColors.neutral.text.subtle
+                  }
                 : room.volume === 0
-                  ? 'border-white/[0.08] bg-white/[0.04] text-white/40'
-                  : 'border-sky-300/[0.35] bg-sky-300/[0.14] text-sky-100 shadow-[0_0_18px_rgba(125,211,252,0.35)]'
-            ].join(' ')}
+                  ? {
+                      border: themeEffects.neutral.border.soft,
+                      backgroundColor: themeEffects.neutral.surface.elevated,
+                      color: themeColors.neutral.text.soft
+                    }
+                  : {
+                    ...themeEffects.active.pill
+                  }
+            }
           >
             {room.volume === 0 ? <VolumeX size={22} /> : <Volume2 size={22} />}
           </button>

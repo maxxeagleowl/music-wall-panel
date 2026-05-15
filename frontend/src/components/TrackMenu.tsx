@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from 'framer-motion';
 import { MoreVertical } from 'lucide-react';
 import { useState } from 'react';
+import type { CSSProperties } from 'react';
 import type { Track } from '../types/music';
+import { themeColors, themeEffects } from '../theme/colors';
 
 type TrackMenuProps = {
   track: Track;
@@ -31,7 +33,13 @@ export function TrackMenu({ track, onPlayNow, onQueueNext, onShowDetails }: Trac
     <div className="relative">
       <button
         type="button"
-        className="grid h-10 w-10 place-items-center rounded-full border border-white/[0.06] bg-white/[0.04] text-white/66 transition hover:bg-white/[0.08] hover:text-white"
+        className="grid h-10 w-10 place-items-center rounded-full transition hover:text-[var(--menu-hover-text)]"
+        style={{
+          border: themeEffects.neutral.border.soft,
+          backgroundColor: themeEffects.neutral.surface.elevated,
+          color: themeColors.neutral.text.secondary,
+          '--menu-hover-text': themeColors.neutral.text.primary
+        } as CSSProperties & Record<string, string>}
         onClick={(event) => {
           event.stopPropagation();
           setOpen((value) => !value);
@@ -47,7 +55,11 @@ export function TrackMenu({ track, onPlayNow, onQueueNext, onShowDetails }: Trac
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -6, scale: 0.96 }}
             transition={{ duration: 0.18 }}
-            className="absolute right-0 top-12 z-40 w-52 overflow-hidden rounded-2xl border border-white/[0.06] bg-panel-850/[0.94] p-2 backdrop-blur-2xl"
+            className="absolute right-0 top-12 z-40 w-52 overflow-hidden rounded-2xl p-2 backdrop-blur-2xl"
+            style={{
+              border: themeEffects.neutral.border.soft,
+              backgroundColor: themeEffects.neutral.surface.panelStrong
+            }}
           >
             {actions.map((action) => (
               <button
@@ -57,7 +69,12 @@ export function TrackMenu({ track, onPlayNow, onQueueNext, onShowDetails }: Trac
                   event.stopPropagation();
                   handleAction(action.key);
                 }}
-                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm text-white/[0.74] transition hover:bg-white/[0.08] hover:text-white"
+                className="flex w-full items-center rounded-xl px-4 py-3 text-left text-sm transition hover:bg-[var(--menu-hover-bg)] hover:text-[var(--menu-hover-text)]"
+                style={{
+                  color: themeColors.neutral.text.secondary,
+                  '--menu-hover-bg': themeEffects.neutral.surface.elevated,
+                  '--menu-hover-text': themeColors.neutral.text.primary
+                } as CSSProperties & Record<string, string>}
               >
                 {action.label}
               </button>

@@ -1,3 +1,5 @@
+import { rgba, themeColors, themeEffects } from '../theme/colors';
+
 type ProgressBarProps = {
   progress: number;
   total: number;
@@ -16,21 +18,34 @@ export function ProgressBar({ progress, total, onSeek }: ProgressBarProps) {
 
   return (
     <div className="w-full space-y-1.5">
-      <div className="flex w-full items-center justify-between text-[0.6rem] tracking-[0.2em] text-white/30">
+      <div
+        className="flex w-full items-center justify-between text-[0.6rem] tracking-[0.2em]"
+        style={{ color: themeColors.neutral.text.muted }}
+      >
         <span>{formatTime(progress)}</span>
         <span>{formatTime(total)}</span>
       </div>
 
       <div className="relative h-7 w-full overflow-hidden">
-        <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full bg-white/[0.12]">
+        <div
+          className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 rounded-full"
+          style={{ backgroundColor: themeColors.neutral.border.medium }}
+        >
           <div
-            className="relative h-px rounded-full bg-gradient-to-r from-white/40 to-white/70"
-            style={{ width: `${percentage}%` }}
+            className="relative h-px rounded-full"
+            style={{
+              width: `${percentage}%`,
+              backgroundImage: themeEffects.gradient.accentSoft
+            }}
           >
-  <div
-    className="absolute right-0 top-1/2 h-[12px] w-[12px] -translate-y-1/2 translate-x-1/2 rounded-full bg-white shadow-[0_0_12px_rgba(255,255,255,0.9)]"
-  />
-</div>
+            <div
+              className="absolute right-0 top-1/2 h-[12px] w-[12px] -translate-y-1/2 translate-x-1/2 rounded-full"
+              style={{
+                backgroundColor: themeColors.accent.goldSoft,
+                boxShadow: themeEffects.glow.soft
+              }}
+            />
+          </div>
         </div>
 
         <input

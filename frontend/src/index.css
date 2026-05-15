@@ -5,7 +5,32 @@
 :root {
   color-scheme: dark;
   font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
-  background: #04060a;
+  background: var(--theme-page);
+  --theme-page: #04060a;
+  --theme-page-top: #05070b;
+  --theme-page-bottom: #030406;
+  --theme-panel: #0b0d12;
+  --theme-panel-deep: #080a0f;
+  --theme-accent-gold-soft: #f0d79f;
+  --theme-accent-gold: #dfbf7a;
+  --theme-text-primary: rgba(246, 241, 232, 0.96);
+  --theme-text-secondary: rgba(246, 241, 232, 0.78);
+  --theme-text-muted: rgba(246, 241, 232, 0.6);
+  --theme-text-soft: rgba(246, 241, 232, 0.34);
+  --theme-text-subtle: rgba(246, 241, 232, 0.18);
+  --theme-border-soft: rgba(246, 241, 232, 0.06);
+  --theme-border-medium: rgba(246, 241, 232, 0.08);
+  --theme-surface-base: rgba(246, 241, 232, 0.02);
+  --theme-surface-soft: rgba(246, 241, 232, 0.03);
+  --theme-surface-elevated: rgba(246, 241, 232, 0.04);
+  --theme-surface-overlay: rgba(0, 0, 0, 0.18);
+  --theme-surface-panel: rgba(11, 13, 18, 0.88);
+  --theme-surface-panel-strong: rgba(11, 13, 18, 0.94);
+  --theme-scrollbar-thumb: rgba(223, 191, 122, 0.18);
+  --theme-scrollbar-track: rgba(255, 255, 255, 0.03);
+  --theme-slider-thumb-border: rgba(223, 191, 122, 0.3);
+  --theme-slider-thumb-fill: rgba(250, 239, 214, 0.95);
+  --theme-slider-thumb-ring: rgba(223, 191, 122, 0.08);
 }
 
 html,
@@ -19,9 +44,9 @@ body {
   min-width: 320px;
   overflow: hidden;
   background:
-    radial-gradient(circle at 50% 0%, rgba(131, 152, 194, 0.14), transparent 30%),
-    linear-gradient(180deg, #05070b 0%, #030406 100%);
-  color: #f4f6fb;
+    radial-gradient(circle at 50% 0%, rgba(223, 191, 122, 0.12), transparent 30%),
+    linear-gradient(180deg, var(--theme-page-top) 0%, var(--theme-page-bottom) 100%);
+  color: var(--theme-text-primary);
   font-family: "Segoe UI Variable Text", "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -52,15 +77,15 @@ input {
 
 ::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.14);
+  background: var(--theme-scrollbar-thumb);
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--theme-scrollbar-track);
 }
 
 input[type="range"] {
-  accent-color: white;
+  accent-color: var(--theme-accent-gold-soft);
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -68,16 +93,16 @@ input[type="range"]::-webkit-slider-thumb {
   height: 18px;
   width: 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--theme-slider-thumb-border);
+  background: var(--theme-slider-thumb-fill);
+  box-shadow: 0 0 0 6px var(--theme-slider-thumb-ring);
 }
 
 input[type="range"]::-moz-range-thumb {
   height: 18px;
   width: 18px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 0 6px rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--theme-slider-thumb-border);
+  background: var(--theme-slider-thumb-fill);
+  box-shadow: 0 0 0 6px var(--theme-slider-thumb-ring);
 }

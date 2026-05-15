@@ -1,0 +1,2 @@
+- slideback now playing to coverflow much slower
+- css für coler themes

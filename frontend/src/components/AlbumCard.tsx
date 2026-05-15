@@ -2,6 +2,7 @@ import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-mo
 import { useEffect } from 'react';
 import type { Album, Track } from '../types/music';
 import { AlbumBackside } from './AlbumBackside';
+import { rgba, themeColors, themeEffects } from '../theme/colors';
 
 type AlbumCardProps = {
   album: Album;
@@ -209,8 +210,11 @@ export function AlbumCard({
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: 180, opacity: 0 }}
               transition={{ duration: 0.36, ease: 'easeInOut' }}
-              className="relative h-full w-full overflow-hidden rounded-[28px] border border-white/[0.08] bg-panel-850/85 shadow-[0_18px_54px_rgba(0,0,0,0.32)]"
+              className="relative h-full w-full overflow-hidden rounded-[28px]"
               style={{
+                border: themeEffects.border.subtle,
+                backgroundColor: rgba(themeColors.panel, 0.85),
+                boxShadow: themeEffects.shadow.elevated,
                 transformStyle: 'preserve-3d',
                 aspectRatio: '1 / 1'
               }}
@@ -242,11 +246,31 @@ export function AlbumCard({
                   }}
                 />
 
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.18),transparent_36%),radial-gradient(circle_at_bottom,rgba(255,255,255,0.06),transparent_38%)]" />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: [
+                      `radial-gradient(circle at top, ${rgba(themeColors.text.primary, 0.18)}, transparent 36%)`,
+                      `radial-gradient(circle at bottom, ${rgba(themeColors.text.primary, 0.06)}, transparent 38%)`
+                    ].join(', ')
+                  }}
+                />
 
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(0,0,0,0.34))]" />
+                <div
+                  className="absolute inset-0"
+                  style={{
+                    backgroundImage: themeEffects.gradient.surface
+                  }}
+                />
 
-                <div className="absolute left-4 top-4 rounded-full border border-white/[0.12] bg-black/[0.18] px-3 py-1 text-[0.58rem] tracking-[0.3em] text-white/[0.68]">
+                <div
+                  className="absolute left-4 top-4 rounded-full px-3 py-1 text-[0.58rem] tracking-[0.3em]"
+                  style={{
+                    border: themeEffects.neutral.border.medium,
+                    backgroundColor: themeEffects.neutral.surface.overlay,
+                    color: themeColors.neutral.text.secondary
+                  }}
+                >
                   {album.coverTag}
                 </div>
 
@@ -258,28 +282,45 @@ export function AlbumCard({
                       repeat: Infinity,
                       ease: 'easeInOut'
                     }}
-                    className="absolute right-4 top-4 rounded-full border border-white/[0.1] bg-white/[0.06] px-3 py-1 text-[0.58rem] tracking-[0.26em] text-white/[0.68]"
+                    className="absolute right-4 top-4 rounded-full px-3 py-1 text-[0.58rem] tracking-[0.26em]"
+                    style={{
+                      border: themeEffects.neutral.border.medium,
+                      backgroundColor: themeEffects.neutral.surface.soft,
+                      color: themeColors.neutral.text.secondary
+                    }}
                   >
                     TAP TO FLIP
                   </motion.div>
                 ) : null}
 
                 <div className="absolute bottom-12 left-4 right-4 min-w-0">
-                  <p className="font-display text-[0.66rem] uppercase tracking-[0.28em] text-white/[0.66]">
+                  <p
+                    className="font-display text-[0.66rem] uppercase tracking-[0.28em]"
+                    style={{ color: themeColors.neutral.text.secondary }}
+                  >
                     {album.artist}
                   </p>
 
-                  <h3 className="mt-2 max-w-[9ch] font-display text-[clamp(1.85rem,2.4vw,2.55rem)] leading-[0.92] tracking-tight text-white drop-shadow-[0_18px_30px_rgba(0,0,0,0.28)]">
+                  <h3
+                    className="mt-2 max-w-[9ch] font-display text-[clamp(1.85rem,2.4vw,2.55rem)] leading-[0.92] tracking-tight"
+                    style={{ textShadow: `0 18px 30px ${rgba(themeColors.overlay, 0.28)}` }}
+                  >
                     {album.title}
                   </h3>
 
-                  <p className="mt-2 truncate text-[0.7rem] text-white/55">
+                  <p className="mt-2 truncate text-[0.7rem]" style={{ color: themeColors.neutral.text.muted }}>
                     {album.mood}
                   </p>
                 </div>
 
-                <div className="absolute bottom-0 left-0 right-0 border-t border-white/10 bg-black/10 px-4 py-3">
-                  <div className="flex items-center justify-between text-[0.68rem] tracking-[0.24em] text-white/58">
+                <div
+                  className="absolute bottom-0 left-0 right-0 px-4 py-3"
+                  style={{
+                    borderTop: `1px solid ${rgba(themeColors.accent.goldSoft, 0.1)}`,
+                    backgroundColor: rgba(themeColors.overlay, 0.1)
+                  }}
+                >
+                  <div className="flex items-center justify-between text-[0.68rem] tracking-[0.24em]" style={{ color: themeColors.neutral.text.muted }}>
                     <span className="truncate">{album.genre}</span>
                     <span>{album.year}</span>
                   </div>

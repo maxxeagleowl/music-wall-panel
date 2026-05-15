@@ -1,6 +1,7 @@
 import { motion } from 'framer-motion';
 import type { SonosRoom } from '../types/sonos';
 import { SonosRoomCard } from './SonosRoomCard';
+import { themeColors, themeEffects } from '../theme/colors';
 
 type SonosPanelProps = {
   rooms: SonosRoom[];
@@ -22,15 +23,27 @@ export function SonosPanel({
       : 'Keine aktive Gruppe';
 
   return (
-    <section className="glass-panel relative h-full min-h-0 overflow-hidden rounded-[2rem] border border-white/[0.06] bg-white/[0.03] px-4 py-3 backdrop-blur-2xl">
+    <section
+      className="glass-panel relative h-full min-h-0 overflow-hidden rounded-[2rem] px-4 py-3 backdrop-blur-2xl"
+      style={{
+        border: themeEffects.border.subtle,
+        backgroundColor: themeEffects.neutral.surface.soft
+      }}
+    >
       <div className="relative grid h-full min-h-0 grid-cols-[0.62fr_4fr] gap-4">
-        <div className="flex min-h-0 flex-col justify-between rounded-[1.55rem] border border-white/[0.055] bg-black/[0.18] px-4 py-4">
-          <p className="font-display text-[0.9rem] uppercase tracking-[0.55rem] text-white/46">
+        <div
+          className="flex min-h-0 flex-col justify-between rounded-[1.55rem] px-4 py-4"
+          style={{
+            border: themeEffects.neutral.border.subtle,
+            backgroundColor: themeEffects.neutral.surface.overlay
+          }}
+        >
+          <p className="font-display text-[0.9rem] uppercase tracking-[0.55rem]" style={{ color: themeColors.neutral.text.faint }}>
             Sonos
           </p>
 
           <div>
-            <p className="mb-3 text-[0.6rem] uppercase tracking-[0.28em] text-white/30">
+            <p className="mb-3 text-[0.6rem] uppercase tracking-[0.28em]" style={{ color: themeColors.neutral.text.subtle }}>
               Aktive Gruppe
             </p>
 
@@ -38,12 +51,13 @@ export function SonosPanel({
               key={activeGroupLabel}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-[1.1rem] leading-snug tracking-wide text-white/66"
+              className="text-[1.1rem] leading-snug tracking-wide"
+              style={{ color: themeColors.neutral.text.secondary }}
             >
               {activeGroupLabel}
             </motion.p>
 
-            <p className="mt-3 text-[0.9rem] tracking-wide text-white/34">
+            <p className="mt-3 text-[0.9rem] tracking-wide" style={{ color: themeColors.neutral.text.soft }}>
               {groupedRooms.length > 1 ? `${groupedRooms.length} Lautsprecher` : ''}
             </p>
           </div>
