@@ -14,7 +14,6 @@ export function AlbumBackside({ album, onPlayTrack, onQueueTrack, onShowTrackDet
     <div className="flex h-full w-full flex-col rounded-[2rem] border border-white/[0.08] bg-panel-850/[0.88] p-4 text-white backdrop-blur-xl">
       <div className="mb-3 flex items-end justify-between gap-4 border-b border-white/[0.06] pb-3">
         <div>
-          <p className="font-display text-xs uppercase tracking-[0.34em] text-white/38">Tracklist</p>
           <h3 className="mt-2 font-display text-2xl tracking-tight text-white">{album.title}</h3>
           <p className="mt-1 text-sm text-white/[0.52]">{album.artist}</p>
         </div>

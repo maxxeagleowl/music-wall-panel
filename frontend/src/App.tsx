@@ -88,6 +88,7 @@ export default function App() {
     setNowPlayingAlbumId(albumId);
     setIsPlaying(true);
     setProgress(0);
+    setFlippedAlbumId(null);
   };
 
   const handlePlayTrack = (albumId: string, track: Track) => {
