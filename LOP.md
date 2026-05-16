@@ -2,12 +2,6 @@
 - css für coler themes
 - zwei Räume aktiv aber drei in Sonos angezeigt
 
-2. Sonos Panel Materialität
-
-Die Karten sind gut, aber noch etwas:
-
-„flat UI“
-zu wenig Hardware
 3. Progressbar Feinschliff
 Handle Material
 minimale Lichtkante
