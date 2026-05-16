@@ -23,47 +23,44 @@ type AlbumCardProps = {
 function getVisuals(offset: number, selected: boolean, flipped: boolean) {
   const distance = Math.abs(offset);
   const side = offset > 0 ? 1 : -1;
-  const x =
-    distance === 1
-      ? side * 160
-      : side * (128 + distance * 74);
-  const y = distance * 2;
-  const scale = Math.max(0.5, 1 - distance * 0.1);
-  const rotateY = side * -Math.min(72, 46 + distance * 7);
-  const translateZ = distance === 0 ? 140 : 110 - distance * 12;
-  const opacity = distance >= 4 ? Math.max(0.06, 0.28 - (distance - 4) * 0.07) : Math.max(0.44, 1 - distance * 0.16);
-  const blur = distance < 2 ? 0 : Math.min(1.2, distance * 0.1);
-  const zIndex = Math.round(100 - distance * 13);
 
   if (selected) {
     return {
       size: flipped ? 375 : 300,
       x: 0,
-      y: 0,
-      scale: 1,
+      y: -4,
+      scale: 1.015,
       rotateY: 0,
-      translateZ: 220,
+      translateZ: 210,
       opacity: 1,
       zIndex: 100,
       blur: 0,
+      brightness: 1.08,
+      contrast: 1.06,
+      saturate: 1.04,
       pointerEvents: 'auto' as const
     };
   }
 
-  if (distance >= 4) {
-    return {
-      size: 300,
-      x,
-      y,
-      scale: Math.max(0.34, scale - 0.03),
-      rotateY,
-      translateZ,
-      opacity: Math.min(opacity, Math.max(0.04, 0.14 - (distance - 4) * 0.045)),
-      zIndex: Math.round(40 - (distance - 4) * 8),
-      blur: Math.min(1.35, blur + (distance - 3.5) * 0.06),
-      pointerEvents: 'none' as const
-    };
-  }
+  const x =
+    distance === 1
+      ? side * 160
+      : side * (128 + distance * 74);
+
+  const y = distance * 2;
+  const scale = Math.max(0.5, 1 - distance * 0.1);
+  const rotateY = side * -Math.min(72, 46 + distance * 7);
+  const translateZ = 110 - distance * 12;
+
+  const opacity =
+    distance > 4
+      ? 0.04
+      : Math.max(0.14, 1 - distance * 0.19);
+
+  const blur =
+    distance > 4
+      ? 1.4
+      : distance * 0.22;
 
   return {
     size: 300,
@@ -73,9 +70,12 @@ function getVisuals(offset: number, selected: boolean, flipped: boolean) {
     rotateY,
     translateZ,
     opacity,
-    zIndex,
+    zIndex: Math.max(5, 90 - distance * 12),
     blur,
-    pointerEvents: 'auto' as const
+    brightness: 1,
+    contrast: 1,
+    saturate: 1,
+    pointerEvents: distance > 4 ? 'none' as const : 'auto' as const
   };
 }
 
@@ -121,7 +121,12 @@ export function AlbumCard({
         z: visuals.translateZ,
         opacity: visuals.opacity,
         zIndex: visuals.zIndex,
-        filter: `blur(${visuals.blur}px)`
+        filter: `
+          blur(${visuals.blur}px)
+          brightness(${visuals.brightness ?? 1})
+          contrast(${visuals.contrast ?? 1})
+          saturate(${visuals.saturate ?? 1})
+        `
       }}
       transition={{
         type: 'spring',
@@ -186,7 +191,10 @@ export function AlbumCard({
               style={{
                 border: themeEffects.border.subtle,
                 backgroundColor: rgba(themeColors.panel, 0.85),
-                boxShadow: themeEffects.shadow.elevated,
+                boxShadow: `
+                  ${themeEffects.shadow.elevated},
+                  0 0 42px ${rgba(themeColors.accent.goldSoft, 0.08)}
+                `,
                 transformStyle: 'preserve-3d',
                 aspectRatio: '1 / 1'
               }}
@@ -201,6 +209,18 @@ export function AlbumCard({
                 }
               }}
             >
+              <div
+                className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[1px]"
+                style={{
+                  background: `linear-gradient(
+                    90deg,
+                    transparent,
+                    ${rgba(themeColors.text.primary, 0.22)},
+                    transparent
+                  )`
+                }}
+              />
+
               <div
                 className="absolute inset-0 overflow-hidden rounded-[28px]"
                 style={{ background: album.accent }}
@@ -292,7 +312,10 @@ export function AlbumCard({
                     backgroundColor: rgba(themeColors.overlay, 0.1)
                   }}
                 >
-                  <div className="flex items-center justify-between text-[0.68rem] tracking-[0.24em]" style={{ color: themeColors.neutral.text.muted }}>
+                  <div
+                    className="flex items-center justify-between text-[0.68rem] tracking-[0.24em]"
+                    style={{ color: themeColors.neutral.text.muted }}
+                  >
                     <span className="truncate">{album.genre}</span>
                     <span>{album.year}</span>
                   </div>

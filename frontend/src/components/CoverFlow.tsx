@@ -84,6 +84,37 @@ export function CoverFlow({
           backgroundImage: `linear-gradient(180deg, transparent, ${rgba(themeColors.accent.goldSoft, 0.06)}, transparent)`
         }}
       />
+    
+    <div
+      className="pointer-events-none absolute inset-0 overflow-hidden"
+    >
+      <div
+        className="absolute left-1/2 top-1/2 h-[420px]p w-[1300px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+        style={{
+          background: `
+            radial-gradient(
+              ellipse at center,
+              ${rgba(themeColors.accent.bronzeSoft, 0.07)} 0%,
+              ${rgba(themeColors.accent.goldSoft, 0.035)} 28%,
+              transparent 72%
+            )
+          `
+        }}
+      />
+
+      <div
+        className="absolute left-1/2 top-[60%] h-[380px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]"
+        style={{
+          background: `
+            radial-gradient(
+              ellipse at center,
+              ${rgba(themeColors.text.primary, 0.025)} 0%,
+              transparent 70%
+            )
+          `
+        }}
+      />
+    </div>
 
      <div className="relative flex h-full min-h-[300px] w-full items-center justify-center overflow-visible [perspective:1400px] [transform-style:preserve-3d]">
         {albums.map((album, index) => {

@@ -2,10 +2,20 @@
 - css für coler themes
 - zwei Räume aktiv aber drei in Sonos angezeigt
 
-1. Theme Gold/Bronze Temperatur feinziehen
-2. NowPlaying optisch veredeln
-3. Coverflow Tiefe und Focus verbessern
-4. Sonos nur noch polieren
+2. Sonos Panel Materialität
+
+Die Karten sind gut, aber noch etwas:
+
+„flat UI“
+zu wenig Hardware
+3. Progressbar Feinschliff
+Handle Material
+minimale Lichtkante
+etwas mehr Präzision
+4. Motion Tuning
+Trägheit
+weichere Übergänge
+mehr „mass“
 
 npm run dev
 
