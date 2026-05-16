@@ -23,14 +23,26 @@ type AlbumCardProps = {
 function getVisuals(offset: number, selected: boolean, flipped: boolean) {
   const distance = Math.abs(offset);
   const side = offset > 0 ? 1 : -1;
+  const x =
+    distance === 1
+      ? side * 160
+      : side * (128 + distance * 74);
+  const y = distance * 2;
+  const scale = Math.max(0.5, 1 - distance * 0.1);
+  const rotateY = side * -Math.min(72, 46 + distance * 7);
+  const translateZ = distance === 0 ? 140 : 110 - distance * 12;
+  const opacity = distance >= 4 ? Math.max(0.06, 0.28 - (distance - 4) * 0.07) : Math.max(0.44, 1 - distance * 0.16);
+  const blur = distance < 2 ? 0 : Math.min(1.2, distance * 0.1);
+  const zIndex = Math.round(100 - distance * 13);
 
   if (selected) {
     return {
       size: flipped ? 375 : 300,
       x: 0,
+      y: 0,
       scale: 1,
       rotateY: 0,
-      translateZ: 180,
+      translateZ: 220,
       opacity: 1,
       zIndex: 100,
       blur: 0,
@@ -38,72 +50,32 @@ function getVisuals(offset: number, selected: boolean, flipped: boolean) {
     };
   }
 
-  if (distance === 1) {
+  if (distance >= 4) {
     return {
       size: 300,
-      x: side * 135,
-      scale: 0.86,
-      rotateY: side * -58,
-      translateZ: 90,
-      opacity: 0.86,
-      zIndex: 80,
-      blur: 0,
-      pointerEvents: 'auto' as const
-    };
-  }
-
-  if (distance === 2) {
-    return {
-      size: 300,
-      x: side * 235,
-      scale: 0.72,
-      rotateY: side * -66,
-      translateZ: 20,
-      opacity: 0.68,
-      zIndex: 60,
-      blur: 0.15,
-      pointerEvents: 'auto' as const
-    };
-  }
-
-  if (distance === 3) {
-    return {
-      size: 300,
-      x: side * 315,
-      scale: 0.58,
-      rotateY: side * -72,
-      translateZ: -80,
-      opacity: 0.5,
-      zIndex: 45,
-      blur: 0.45,
-      pointerEvents: 'auto' as const
-    };
-  }
-
-  if (distance === 4) {
-    return {
-      size: 300,
-      x: side * 380,
-      scale: 0.46,
-      rotateY: side * -78,
-      translateZ: -170,
-      opacity: 0.34,
-      zIndex: 30,
-      blur: 0.8,
+      x,
+      y,
+      scale: Math.max(0.34, scale - 0.03),
+      rotateY,
+      translateZ,
+      opacity: Math.min(opacity, Math.max(0.04, 0.14 - (distance - 4) * 0.045)),
+      zIndex: Math.round(40 - (distance - 4) * 8),
+      blur: Math.min(1.35, blur + (distance - 3.5) * 0.06),
       pointerEvents: 'none' as const
     };
   }
 
   return {
     size: 300,
-    x: side * 430,
-    scale: 0.34,
-    rotateY: side * -82,
-    translateZ: -250,
-    opacity: 0.18,
-    zIndex: 15,
-    blur: 1.1,
-    pointerEvents: 'none' as const
+    x,
+    y,
+    scale,
+    rotateY,
+    translateZ,
+    opacity,
+    zIndex,
+    blur,
+    pointerEvents: 'auto' as const
   };
 }
 
@@ -142,7 +114,7 @@ export function AlbumCard({
       className="absolute left-1/2 top-1/2"
       animate={{
         x: visuals.x,
-        y: 0,
+        y: visuals.y,
         scale: visuals.scale,
         rotateY: visuals.rotateY,
         rotateX: 0,
