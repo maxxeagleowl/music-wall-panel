@@ -34,7 +34,7 @@ export const mockRooms: SonosRoom[] = [
     volume: 18,
     muted: false,
     active: false,
-    groupId: 'sleep',
+    groupId: null,
     leader: true
   }
 ];

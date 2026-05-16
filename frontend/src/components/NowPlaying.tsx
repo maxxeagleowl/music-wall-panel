@@ -112,8 +112,15 @@ export function NowPlaying({
             }
             transition={
               isPlaying
-                ? { duration: 4, repeat: Infinity, ease: 'easeInOut' }
-                : { duration: 0.5, ease: 'easeOut' }
+                ? {
+                    duration: 7,
+                    repeat: Infinity,
+                    ease: [0.42, 0, 0.18, 1]
+                  }
+                : {
+                    duration: 1.2,
+                    ease: [0.42, 0, 0.18, 1]
+                  }
             }
             className="relative aspect-square w-[168px] overflow-hidden rounded-[1.9rem]"
             style={{

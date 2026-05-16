@@ -18,9 +18,11 @@ export function SonosPanel({
 }: SonosPanelProps) {
   const groupedRooms = rooms.filter((room) => room.groupId);
   const activeGroupLabel =
-    groupedRooms.length > 1
-      ? groupedRooms.map((room) => room.name).join('  ')
-      : 'Keine aktive Gruppe';
+  groupedRooms.length > 1
+    ? groupedRooms.map((room) => room.name).join('  ')
+    : groupedRooms.length === 1
+      ? groupedRooms[0].name
+      : 'Musik Standby';
 
   return (
     <section

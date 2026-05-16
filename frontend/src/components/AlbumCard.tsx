@@ -1,4 +1,4 @@
-import { AnimatePresence, motion, useMotionValue, useTransform } from 'framer-motion';
+import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect } from 'react';
 import type { Album, Track } from '../types/music';
 import { AlbumBackside } from './AlbumBackside';
@@ -130,9 +130,10 @@ export function AlbumCard({
       }}
       transition={{
         type: 'spring',
-        stiffness: 120,
-        damping: 20,
-        mass: 0.9
+        stiffness: 72,
+        damping: 24,
+        mass: 1.45,
+        velocity: 0.2
       }}
       style={{
         width: visuals.size,
@@ -146,8 +147,14 @@ export function AlbumCard({
       <motion.div
         className="relative h-full w-full overflow-visible"
         drag={selected && !flipped}
-        dragElastic={0.16}
+        dragElastic={0.08}
         dragMomentum={false}
+        dragTransition={{
+          bounceStiffness: 120,
+          bounceDamping: 18,
+          power: 0.18,
+          timeConstant: 260
+        }}
         style={
           selected
             ? {
@@ -162,8 +169,19 @@ export function AlbumCard({
         onDragEnd={(_, info) => {
           onDragStateChange(false);
 
-          dragX.set(0);
-          dragY.set(0);
+          animate(dragX, 0, {
+            type: 'spring',
+            stiffness: 95,
+            damping: 18,
+            mass: 1.35
+          });
+
+          animate(dragY, 0, {
+            type: 'spring',
+            stiffness: 95,
+            damping: 18,
+            mass: 1.35
+          });
 
           if (info.offset.y > 120) {
             onDropToNowPlaying();
@@ -186,7 +204,12 @@ export function AlbumCard({
               initial={{ rotateY: 0, opacity: 0 }}
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: 180, opacity: 0 }}
-              transition={{ duration: 0.36, ease: 'easeInOut' }}
+              transition={{
+                type: 'spring',
+                stiffness: 120,
+                damping: 18,
+                mass: 1.2
+              }}
               className="relative h-full w-full overflow-hidden rounded-[28px]"
               style={{
                 border: themeEffects.border.subtle,
@@ -328,7 +351,12 @@ export function AlbumCard({
               initial={{ rotateY: -180, opacity: 0 }}
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: 0, opacity: 0 }}
-              transition={{ duration: 0.36, ease: 'easeInOut' }}
+              transition={{
+                type: 'spring',
+                stiffness: 110,
+                damping: 20,
+                mass: 1.3
+              }}
               className="h-full w-full overflow-hidden rounded-[28px]"
               style={{
                 transformStyle: 'preserve-3d',

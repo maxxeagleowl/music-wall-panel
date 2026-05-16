@@ -25,7 +25,12 @@ export function SonosRoomCard({
       layout
       whileTap={{ scale: 0.985 }}
       animate={{ opacity: room.active ? 1 : 0.55 }}
-      transition={{ type: 'spring', stiffness: 170, damping: 24 }}
+      transition={{
+        type: 'spring',
+        stiffness: 110,
+        damping: 22,
+        mass: 1.25
+      }}
       className="relative h-full overflow-hidden rounded-[1.8rem]"
       style={{
         border: themeEffects.border.subtle,
@@ -189,14 +194,24 @@ export function SonosRoomCard({
               className="absolute left-0 top-1/2 h-[3px] -translate-y-1/2 rounded-full"
               style={{ backgroundImage: themeEffects.gradient.accent }}
               animate={{ width: `${volumeWidth}%` }}
-              transition={{ duration: 0.25 }}
+              transition={{
+                type: 'spring',
+                stiffness: 320,
+                damping: 30,
+                mass: 0.45
+              }}
             />
 
             <motion.div
               className="absolute top-1/2 h-4 w-4 -translate-y-1/2 rounded-full"
               style={{ backgroundColor: themeColors.accent.goldSoft }}
               animate={{ left: `calc(${volumeWidth}% - 8px)` }}
-              transition={{ duration: 0.25 }}
+              transition={{
+                type: 'spring',
+                stiffness: 320,
+                damping: 30,
+                mass: 0.45
+              }}
             />
 
             <input

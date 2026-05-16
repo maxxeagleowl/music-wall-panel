@@ -43,7 +43,12 @@ export function TopNav({ active, onSelect }: TopNavProps) {
                   opacity: isActive ? 1 : 0.55,
                   scaleX: isActive ? 1 : 0.35
                 }}
-                transition={{ type: 'spring', stiffness: 220, damping: 24 }}
+                transition={{
+                  type: 'spring',
+                  stiffness: 120,
+                  damping: 18,
+                  mass: 1
+                }}
               />
               <motion.span
                 aria-hidden="true"
