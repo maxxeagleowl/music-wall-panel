@@ -43,9 +43,21 @@ export function PlaybackControls({ isPlaying, onPrevious, onTogglePlay, onNext }
         type="button"
         className={sideButtonClass}
         style={{
-          border: themeEffects.neutral.border.soft,
-          backgroundColor: themeEffects.neutral.surface.elevated,
-          color: themeColors.neutral.text.secondary
+          border: `1px solid ${rgba(themeColors.accent.goldSoft, 0.22)}`,
+          background: `
+            linear-gradient(
+              180deg,
+              ${rgba(themeColors.accent.goldSoft, 0.42)} 0%,
+              ${rgba(themeColors.accent.bronzeSoft, 0.58)} 42%,
+              ${rgba(themeColors.panelDeep, 0.96)} 100%
+            )
+          `,
+          color: themeColors.neutral.text.inverse,
+          boxShadow: `
+            inset 0 1px 0 ${rgba(themeColors.text.primary, 0.08)},
+            0 10px 22px ${rgba(themeColors.overlay, 0.28)},
+            0 0 18px ${rgba(themeColors.accent.goldSoft, 0.12)}
+          `
         }}
         onClick={onNext}
       >
