@@ -34,10 +34,12 @@ export function NowPlaying({
   const visualTheme = createMockAlbumTheme(album);
   const currentIndex = album.tracks.findIndex(t => t.id === track.id);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-  const queueTracks = [1, 2, 3, 4].map(offset => {
-    const idx = (safeIndex + offset) % album.tracks.length;
-    return album.tracks[idx];
-  });
+  const trackCount = album.tracks.length;
+  const queueTracks = trackCount > 0
+    ? [1, 2, 3, 4]
+        .map(offset => album.tracks[(safeIndex + offset) % trackCount])
+        .filter((t): t is NonNullable<typeof t> => t !== undefined)
+    : [];
   const coverLabel = album.coverText.trim() || visualTheme.textOnCover;
 
   return (
@@ -133,6 +135,15 @@ export function NowPlaying({
                 background: visualTheme.ambientGradient
               }}
             >
+              {album.coverUrl && (
+                <img
+                  src={album.coverUrl}
+                  alt={album.title}
+                  className="absolute inset-0 h-full w-full object-cover"
+                  draggable={false}
+                />
+              )}
+
               <div
                 className="pointer-events-none absolute inset-0"
                 style={{
@@ -143,19 +154,21 @@ export function NowPlaying({
                 }}
               />
 
-              <div className="relative flex h-full items-center justify-center p-4">
-                <span
-                  className="inline-flex items-center rounded-full border px-3 py-1 font-display text-[0.7rem] leading-none tracking-[0.2em]"
-                  style={{
-                    color: visualTheme.textOnCover,
-                    borderColor: 'rgba(255, 255, 255, 0.12)',
-                    backgroundColor: 'rgba(0, 0, 0, 0.28)',
-                    boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)'
-                  }}
-                >
-                  {coverLabel}
-                </span>
-              </div>
+              {!album.coverUrl && (
+                <div className="relative flex h-full items-center justify-center p-4">
+                  <span
+                    className="inline-flex items-center rounded-full border px-3 py-1 font-display text-[0.7rem] leading-none tracking-[0.2em]"
+                    style={{
+                      color: visualTheme.textOnCover,
+                      borderColor: 'rgba(255, 255, 255, 0.12)',
+                      backgroundColor: 'rgba(0, 0, 0, 0.28)',
+                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)'
+                    }}
+                  >
+                    {coverLabel}
+                  </span>
+                </div>
+              )}
             </div>
 
             <div
@@ -198,53 +211,49 @@ export function NowPlaying({
               />
             </div>
 
-            <div className="space-y-2.5">
-              {queueTracks.map((qTrack, index) => (
-                <div
-                  key={qTrack.id}
-                  className="grid items-center gap-3"
-                  style={{
-                    gridTemplateColumns: '1.7rem 1fr 2.4rem'
-                  }}
-                >
-                  <span
-                    className="text-[0.58rem] tabular-nums"
-                    style={{
-                      color:
-                        index === 0
-                          ? themeColors.neutral.text.soft
-                          : themeColors.neutral.text.subtle
-                    }}
+            {queueTracks.length > 0 ? (
+              <div className="space-y-2.5">
+                {queueTracks.map((qTrack, index) => (
+                  <div
+                    key={qTrack.id}
+                    className="grid items-center gap-3"
+                    style={{ gridTemplateColumns: '1.7rem 1fr 2.4rem' }}
                   >
-                    {String(qTrack.number).padStart(2, '0')}
-                  </span>
-
-                  <span
-                    className="truncate text-[0.72rem] tracking-[0.02em]"
-                    style={{
-                      color:
-                        index === 0
-                          ? themeColors.neutral.text.secondary
-                          : themeColors.neutral.text.faint
-                    }}
-                  >
-                    {qTrack.title}
-                  </span>
-
-                  <span
-                    className="text-right text-[0.58rem] tabular-nums"
-                    style={{
-                      color:
-                        index === 0
-                          ? themeColors.neutral.text.soft
-                          : themeColors.neutral.text.subtle
+                    <span
+                      className="text-[0.58rem] tabular-nums"
+                      style={{
+                        color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
                       }}
                     >
-                    {qTrack.duration}
-                  </span>
-                </div>
-              ))}
-            </div>
+                      {String(qTrack.number).padStart(2, '0')}
+                    </span>
+                    <span
+                      className="truncate text-[0.72rem] tracking-[0.02em]"
+                      style={{
+                        color: index === 0 ? themeColors.neutral.text.secondary : themeColors.neutral.text.faint
+                      }}
+                    >
+                      {qTrack.title}
+                    </span>
+                    <span
+                      className="text-right text-[0.58rem] tabular-nums"
+                      style={{
+                        color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
+                      }}
+                    >
+                      {qTrack.duration}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p
+                className="text-[0.7rem] tracking-[0.08em]"
+                style={{ color: themeColors.neutral.text.subtle }}
+              >
+                —
+              </p>
+            )}
           </div>
 
       </div>

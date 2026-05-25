@@ -7,6 +7,7 @@ type TopNavProps = {
   onSelect: (item: string) => void;
   spotifyStatus: SpotifyStatus;
   onSpotifyLogout: () => void;
+  activeDeviceName?: string | null;
 };
 
 const items = ['Auswahl', 'Playlists', 'Favoriten', 'Suche'];
@@ -14,9 +15,11 @@ const items = ['Auswahl', 'Playlists', 'Favoriten', 'Suche'];
 function SpotifyControl({
   status,
   onLogout,
+  activeDeviceName,
 }: {
   status: SpotifyStatus;
   onLogout: () => void;
+  activeDeviceName?: string | null;
 }) {
   if (status.connected) {
     return (
@@ -37,11 +40,21 @@ function SpotifyControl({
           transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
           style={{ backgroundColor: '#5ecf7e' }}
         />
-        <span
-          className="max-w-[9rem] truncate font-display text-[0.7rem] tracking-[0.18em] transition-colors"
-          style={{ color: themeColors.neutral.text.muted }}
-        >
-          {status.user?.displayName ?? 'Verbunden'}
+        <span className="flex min-w-0 flex-col items-start">
+          <span
+            className="max-w-[9rem] truncate font-display text-[0.7rem] tracking-[0.18em] transition-colors"
+            style={{ color: themeColors.neutral.text.muted }}
+          >
+            {status.user?.displayName ?? 'Verbunden'}
+          </span>
+          {activeDeviceName && (
+            <span
+              className="max-w-[9rem] truncate text-[0.56rem] tracking-[0.14em]"
+              style={{ color: themeColors.neutral.text.subtle }}
+            >
+              {activeDeviceName}
+            </span>
+          )}
         </span>
       </button>
     );
@@ -73,7 +86,7 @@ function SpotifyControl({
   );
 }
 
-export function TopNav({ active, onSelect, spotifyStatus, onSpotifyLogout }: TopNavProps) {
+export function TopNav({ active, onSelect, spotifyStatus, onSpotifyLogout, activeDeviceName }: TopNavProps) {
   return (
     <nav
       className="flex h-full items-center rounded-[1.4rem] border-b px-4 py-2 backdrop-blur-2xl"
@@ -130,7 +143,7 @@ export function TopNav({ active, onSelect, spotifyStatus, onSpotifyLogout }: Top
 
       {/* Spotify status control — right side */}
       <div className="flex w-36 shrink-0 justify-end">
-        <SpotifyControl status={spotifyStatus} onLogout={onSpotifyLogout} />
+        <SpotifyControl status={spotifyStatus} onLogout={onSpotifyLogout} activeDeviceName={activeDeviceName} />
       </div>
     </nav>
   );

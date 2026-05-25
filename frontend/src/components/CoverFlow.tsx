@@ -6,6 +6,7 @@ type CoverFlowProps = {
   albums: Album[];
   selectedAlbumId: string;
   flippedAlbumId: string | null;
+  loadingTrackMap?: Record<string, boolean>;
   onSelectAlbum: (albumId: string) => void;
   onFlipAlbum: (albumId: string) => void;
   onSwipePrev: () => void;
@@ -21,6 +22,7 @@ export function CoverFlow({
   albums,
   selectedAlbumId,
   flippedAlbumId,
+  loadingTrackMap,
   onSelectAlbum,
   onFlipAlbum,
   onSwipePrev,
@@ -127,6 +129,7 @@ export function CoverFlow({
               offset={circularOffset}
               selected={album.id === selectedAlbumId}
               flipped={flippedAlbumId === album.id}
+              tracksLoading={loadingTrackMap?.[album.id] ?? false}
               onSelect={() => onSelectAlbum(album.id)}
               onFlip={() => onFlipAlbum(album.id)}
               onSwipePrev={onSwipePrev}

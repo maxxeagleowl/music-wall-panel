@@ -17,6 +17,7 @@ const SCOPES = [
   'user-library-read',
   'user-read-playback-state',
   'user-read-currently-playing',
+  'user-read-recently-played',
   'playlist-read-private',
 ].join(' ');
 

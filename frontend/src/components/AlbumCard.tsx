@@ -9,6 +9,7 @@ type AlbumCardProps = {
   offset: number;
   selected: boolean;
   flipped: boolean;
+  tracksLoading?: boolean;
   onSelect: () => void;
   onFlip: () => void;
   onSwipePrev: () => void;
@@ -84,6 +85,7 @@ export function AlbumCard({
   offset,
   selected,
   flipped,
+  tracksLoading,
   onSelect,
   onFlip,
   onSwipePrev,
@@ -248,10 +250,20 @@ export function AlbumCard({
                 className="absolute inset-0 overflow-hidden rounded-[28px]"
                 style={{ background: album.accent }}
               >
-                <div
-                  className="absolute inset-0"
-                  style={{ background: album.accentSoft }}
-                />
+                {album.coverUrl ? (
+                  <img
+                    src={album.coverUrl}
+                    alt={album.title}
+                    className="absolute inset-0 h-full w-full object-cover"
+                    loading="lazy"
+                    draggable={false}
+                  />
+                ) : (
+                  <div
+                    className="absolute inset-0"
+                    style={{ background: album.accentSoft }}
+                  />
+                )}
 
                 <div
                   className="absolute inset-0 opacity-30 mix-blend-overlay"
@@ -367,6 +379,7 @@ export function AlbumCard({
             >
               <AlbumBackside
                 album={album}
+                tracksLoading={tracksLoading}
                 onPlayTrack={onPlayTrack}
                 onQueueTrack={onQueueTrack}
                 onShowTrackDetails={onShowTrackDetails}
