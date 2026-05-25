@@ -73,7 +73,7 @@ export function NowPlaying({
                 color: themeColors.neutral.text.faint
               }}
             >
-              {album.artist}
+              {track.artist ?? album.artist}
             </p>
 
             <h2
@@ -91,7 +91,7 @@ export function NowPlaying({
                 color: themeColors.neutral.text.soft
               }}
             >
-              {album.title}
+              {track.albumTitle ?? album.title}
             </p>
           </div>
         </div>
@@ -135,10 +135,10 @@ export function NowPlaying({
                 background: visualTheme.ambientGradient
               }}
             >
-              {album.coverUrl && (
+              {(track.albumCoverUrl ?? album.coverUrl) && (
                 <img
-                  src={album.coverUrl}
-                  alt={album.title}
+                  src={(track.albumCoverUrl ?? album.coverUrl)!}
+                  alt={track.albumTitle ?? album.title}
                   className="absolute inset-0 h-full w-full object-cover"
                   draggable={false}
                 />
@@ -154,7 +154,7 @@ export function NowPlaying({
                 }}
               />
 
-              {!album.coverUrl && (
+              {!(track.albumCoverUrl ?? album.coverUrl) && (
                 <div className="relative flex h-full items-center justify-center p-4">
                   <span
                     className="inline-flex items-center rounded-full border px-3 py-1 font-display text-[0.7rem] leading-none tracking-[0.2em]"

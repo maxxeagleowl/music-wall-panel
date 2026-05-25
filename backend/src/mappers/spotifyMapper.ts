@@ -3,6 +3,7 @@ import type {
   SpotifyAlbumFull,
   SpotifyTrackSimple,
   SpotifyPlaylist,
+  SpotifyPlaylistFull,
   SpotifyDevice,
   SpotifyRecentlyPlayedItem,
   SpotifySearchResult,
@@ -15,6 +16,9 @@ export interface AppTrack {
   number: number;
   title: string;
   duration: string;
+  artist?: string;
+  albumTitle?: string;
+  albumCoverUrl?: string | null;
 }
 
 export interface AppAlbum {
@@ -138,13 +142,50 @@ export function mapAlbum(
 }
 
 export function mapPlaylist(p: SpotifyPlaylist): AppPlaylist {
+  const trackCount = (p.items ?? p.tracks)?.total ?? 0;
   return {
     id: p.id,
     name: p.name,
     description: p.description ?? '',
     coverUrl: p.images[0]?.url ?? null,
-    trackCount: p.tracks.total,
+    trackCount,
     owner: p.owner.display_name ?? '',
+  };
+}
+
+export function mapPlaylistFull(p: SpotifyPlaylistFull): AppAlbum {
+  const paging = p.items ?? p.tracks;
+  const rawItems = paging?.items ?? [];
+  const total = paging?.total ?? rawItems.length;
+
+  const tracks = rawItems
+    .map((raw) => ({ raw, t: raw.item ?? raw.track }))
+    .filter(({ raw, t }) => t != null && t.id != null && !raw.is_local)
+    .map(({ raw: _, t }, i) => ({
+      id: t!.id,
+      number: i + 1,
+      title: t!.name,
+      duration: formatMs(t!.duration_ms),
+      artist: artistNames(t!.artists),
+      albumTitle: t!.album.name,
+      albumCoverUrl: t!.album.images[0]?.url ?? null,
+    }));
+
+  return {
+    id: p.id,
+    artist: p.owner.display_name ?? 'Playlist',
+    title: p.name,
+    year: new Date().getFullYear(),
+    genre: `${total} Tracks`,
+    mood: p.description ?? '',
+    label: '',
+    accent: SPOTIFY_ACCENT,
+    accentSoft: SPOTIFY_ACCENT_SOFT,
+    coverTag: p.name.slice(0, 2).toUpperCase(),
+    coverPattern: COVER_PATTERN,
+    coverText: p.name.slice(0, 2).toUpperCase(),
+    coverUrl: p.images[0]?.url ?? null,
+    tracks,
   };
 }
 

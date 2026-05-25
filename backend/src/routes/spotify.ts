@@ -70,6 +70,17 @@ router.get('/playlists', async (_req: Request, res: Response) => {
   await handle(res, () => spotifyService.getPlaylists(), []);
 });
 
+// GET /api/spotify/playlists/:id
+router.get('/playlists/:id', async (req: Request, res: Response) => {
+  if (!requireAuth(res)) return;
+  const { id } = req.params;
+  if (!id) {
+    res.status(400).json({ error: 'Playlist id required' });
+    return;
+  }
+  await handle(res, () => spotifyService.getPlaylist(id), null);
+});
+
 // ── Recently played ───────────────────────────────────────────────────────────
 
 // GET /api/spotify/recent

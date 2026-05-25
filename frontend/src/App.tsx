@@ -88,6 +88,12 @@ export default function App() {
   // nowPlayingDisplayAlbumId is the album shown in NowPlaying — set by user drag/play actions,
   // NOT overridden by backend polling (which only knows mock album IDs).
   const [nowPlayingDisplayAlbumId, setNowPlayingDisplayAlbumId] = useState<string>(mockAlbums[0].id);
+  // Ref kept in sync so polling closure (empty-dep effect) can read the current album ID
+  const nowPlayingAlbumIdRef = useRef(mockAlbums[0].id);
+  function setNowPlayingAlbum(id: string) {
+    nowPlayingAlbumIdRef.current = id;
+    setNowPlayingDisplayAlbumId(id);
+  }
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
@@ -101,7 +107,7 @@ export default function App() {
     return spotifyLibrary.devices.find((d) => d.isActive)?.name ?? null;
   }, [spotifyLibrary.devices]);
 
-  // ── ensureAlbumDetails: lazy-fetch full album tracks on demand ─────────────
+  // ── ensureAlbumDetails: lazy-fetch full album/playlist tracks on demand ────
   async function ensureAlbumDetails(albumId: string) {
     if (mockAlbums.some((a) => a.id === albumId) || albumId.startsWith('__')) return;
     if (pendingFetches.current.has(albumId)) return;
@@ -111,7 +117,10 @@ export default function App() {
     setLoadingTrackMap((prev) => ({ ...prev, [albumId]: true }));
 
     try {
-      const album = await spotifyApi.getAlbum(albumId);
+      const isPlaylist = spotifyLibrary.playlists.some((p) => p.id === albumId);
+      const album = isPlaylist
+        ? await spotifyApi.getPlaylist(albumId)
+        : await spotifyApi.getAlbum(albumId);
       if (album) {
         setEnrichedAlbumsById((prev) => ({ ...prev, [albumId]: album }));
       }
@@ -138,22 +147,25 @@ export default function App() {
 
     if (activeNav === 'Playlists') {
       if (playlists.length > 0) {
-        return playlists.map((p) => ({
-          id: p.id,
-          artist: p.owner || 'Playlist',
-          title: p.name,
-          year: new Date().getFullYear(),
-          genre: `${p.trackCount} Tracks`,
-          mood: p.description,
-          label: '',
-          accent: SPOTIFY_ACCENT,
-          accentSoft: SPOTIFY_ACCENT_SOFT,
-          coverTag: p.name.slice(0, 2).toUpperCase(),
-          coverPattern: SPOTIFY_COVER_PATTERN,
-          coverText: p.name.slice(0, 2).toUpperCase(),
-          coverUrl: p.coverUrl,
-          tracks: [],
-        }));
+        return playlists.map((p) => {
+          const base: Album = {
+            id: p.id,
+            artist: p.owner || 'Playlist',
+            title: p.name,
+            year: new Date().getFullYear(),
+            genre: `${p.trackCount} Tracks`,
+            mood: p.description,
+            label: '',
+            accent: SPOTIFY_ACCENT,
+            accentSoft: SPOTIFY_ACCENT_SOFT,
+            coverTag: p.name.slice(0, 2).toUpperCase(),
+            coverPattern: SPOTIFY_COVER_PATTERN,
+            coverText: p.name.slice(0, 2).toUpperCase(),
+            coverUrl: p.coverUrl,
+            tracks: [],
+          };
+          return enrichedAlbumsById[p.id] ?? base;
+        });
       }
       // Connected but no playlists — show clear empty state, not mocks
       return [EMPTY_PLAYLISTS];
@@ -207,7 +219,12 @@ export default function App() {
       const stillPresent = displayAlbums.some((a) => a.id === cur);
       return stillPresent ? cur : displayAlbums[0].id;
     });
-    setFlippedAlbumId(null);
+    // Only unflip if the flipped album is no longer in the list (e.g. tab switch),
+    // not when the same album gets enriched with track data.
+    setFlippedAlbumId((cur) => {
+      if (!cur) return null;
+      return displayAlbums.some((a) => a.id === cur) ? cur : null;
+    });
   }, [displayAlbums]);
 
   // ── Safety helpers ──────────────────────────────────────────────────────────
@@ -236,8 +253,11 @@ export default function App() {
   function applyBackendState(state: playbackApi.NowPlayingResponse) {
     setIsPlaying(state.isPlaying);
     setProgress(state.progress);
-    setCurrentTrackIndex(state.currentTrackIndex);
     setTotal(state.totalDuration);
+    // Only sync track index from backend for mock albums — Spotify content manages its own index
+    if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
+      setCurrentTrackIndex(state.currentTrackIndex);
+    }
     // Note: state.currentAlbumId is a mock ID — we keep our own nowPlayingDisplayAlbumId
     // so real Spotify album metadata is not overridden by polling
   }
@@ -247,11 +267,10 @@ export default function App() {
     playbackApi.getNowPlaying()
       .then((state) => {
         applyBackendState(state);
-        setNowPlayingDisplayAlbumId((cur) => {
-          // Only set from backend on first load (when still at default mock)
-          if (cur === mockAlbums[0].id) return state.currentAlbumId;
-          return cur;
-        });
+        // Only set from backend on first load (when still at default mock)
+        if (nowPlayingAlbumIdRef.current === mockAlbums[0].id) {
+          setNowPlayingAlbum(state.currentAlbumId);
+        }
       })
       .catch(console.error);
 
@@ -261,6 +280,16 @@ export default function App() {
     return () => window.clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Sync progress bar total to actual Spotify track duration when track changes
+  useEffect(() => {
+    if (mockAlbums.some((a) => a.id === nowPlayingDisplayAlbumId)) return;
+    const album = enrichedAlbumsById[nowPlayingDisplayAlbumId];
+    const track = album?.tracks[currentTrackIndex];
+    if (!track?.duration) return;
+    const [m, s] = track.duration.split(':').map(Number);
+    setTotal((m ?? 0) * 60 + (s ?? 0));
+  }, [currentTrackIndex, nowPlayingDisplayAlbumId, enrichedAlbumsById]);
 
   // ── Bootstrap effects ───────────────────────────────────────────────────────
 
@@ -348,7 +377,7 @@ export default function App() {
 
     // Immediately update display state so NowPlaying shows the dropped album
     setSelectedAlbumId(albumId);
-    setNowPlayingDisplayAlbumId(albumId);
+    setNowPlayingAlbum(albumId);
     setCurrentTrackIndex(0);
     setProgress(0);
     setIsPlaying(true);
@@ -367,7 +396,7 @@ export default function App() {
     const isMock = mockAlbums.some((a) => a.id === albumId);
 
     setSelectedAlbumId(albumId);
-    setNowPlayingDisplayAlbumId(albumId);
+    setNowPlayingAlbum(albumId);
     setFlippedAlbumId(null);
 
     if (isMock) {
@@ -381,7 +410,7 @@ export default function App() {
       setCurrentTrackIndex(trackIndex);
       setProgress(0);
       setIsPlaying(true);
-      playbackApi.play().then(applyBackendState).catch(console.error);
+      playbackApi.play().catch(console.error);
     }
   };
 
@@ -415,11 +444,27 @@ export default function App() {
   // ── Playback controls ───────────────────────────────────────────────────────
 
   const handlePrevious = () => {
-    playbackApi.previous().then(applyBackendState).catch(console.error);
+    if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
+      playbackApi.previous().then(applyBackendState).catch(console.error);
+    } else {
+      const album = enrichedAlbumsById[nowPlayingAlbumIdRef.current];
+      const count = album?.tracks.length ?? 0;
+      setCurrentTrackIndex((i) => (count > 0 ? (i - 1 + count) % count : i));
+      setProgress(0);
+      playbackApi.play().catch(console.error);
+    }
   };
 
   const handleNext = () => {
-    playbackApi.next().then(applyBackendState).catch(console.error);
+    if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
+      playbackApi.next().then(applyBackendState).catch(console.error);
+    } else {
+      const album = enrichedAlbumsById[nowPlayingAlbumIdRef.current];
+      const count = album?.tracks.length ?? 0;
+      setCurrentTrackIndex((i) => (count > 0 ? (i + 1) % count : i));
+      setProgress(0);
+      playbackApi.play().catch(console.error);
+    }
   };
 
   const handleTogglePlay = () => {

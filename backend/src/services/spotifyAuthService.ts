@@ -19,6 +19,7 @@ const SCOPES = [
   'user-read-currently-playing',
   'user-read-recently-played',
   'playlist-read-private',
+  'playlist-read-collaborative',
 ].join(' ');
 
 // CSRF state for pending OAuth flow

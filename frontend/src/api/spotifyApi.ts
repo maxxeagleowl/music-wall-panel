@@ -28,6 +28,14 @@ export async function getAlbum(id: string): Promise<Album | null> {
   }
 }
 
+export async function getPlaylist(id: string): Promise<Album | null> {
+  try {
+    return await get<Album>(`/api/spotify/playlists/${id}`);
+  } catch {
+    return null;
+  }
+}
+
 export async function getPlaylists(): Promise<Playlist[]> {
   try {
     return await get<Playlist[]>('/api/spotify/playlists');

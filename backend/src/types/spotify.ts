@@ -41,8 +41,39 @@ export interface SpotifyPlaylist {
   name: string;
   description: string | null;
   images: SpotifyImage[];
-  tracks: { total: number };
+  /** Spotify renamed tracks→items in 2024 */
+  items?: { href: string; total: number } | null;
+  /** Legacy field name — keep for fallback */
+  tracks?: { href: string; total: number } | null;
   owner: { display_name: string | null };
+}
+
+export interface SpotifyPlaylistTrackItem {
+  /** Spotify renamed track→item in 2024 */
+  item?: (SpotifyTrackSimple & { album: SpotifyAlbumSimple }) | null;
+  /** Legacy field name — keep for fallback */
+  track?: (SpotifyTrackSimple & { album: SpotifyAlbumSimple }) | null;
+  is_local: boolean;
+}
+
+export interface SpotifyPlaylistFull {
+  id: string;
+  name: string;
+  description: string | null;
+  images: SpotifyImage[];
+  owner: { display_name: string | null };
+  /** Spotify renamed tracks→items in 2024; paging object with nested items array */
+  items?: {
+    href: string;
+    items: SpotifyPlaylistTrackItem[];
+    total: number;
+  } | null;
+  /** Legacy field name — keep for fallback */
+  tracks?: {
+    href: string;
+    items: SpotifyPlaylistTrackItem[];
+    total: number;
+  } | null;
 }
 
 export interface SpotifyDevice {
@@ -68,4 +99,14 @@ export interface SpotifySearchResult {
 export interface SpotifySavedAlbum {
   added_at: string;
   album: SpotifyAlbumSimple;
+}
+
+export interface SpotifyPlaylistTracksPage {
+  href: string;
+  items: SpotifyPlaylistTrackItem[];
+  limit: number;
+  next: string | null;
+  offset: number;
+  previous: string | null;
+  total: number;
 }

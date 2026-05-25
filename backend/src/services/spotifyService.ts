@@ -3,6 +3,8 @@ import type {
   SpotifyAlbumFull,
   SpotifyDevice,
   SpotifyPlaylist,
+  SpotifyPlaylistFull,
+  SpotifyPlaylistTracksPage,
   SpotifyRecentlyPlayedItem,
   SpotifySearchResult,
   SpotifySavedAlbum,
@@ -11,6 +13,7 @@ import {
   mapAlbum,
   mapDevice,
   mapPlaylist,
+  mapPlaylistFull,
   mapRecentTrack,
   mapSearchResults,
   type AppAlbum,
@@ -60,10 +63,34 @@ export async function getAlbum(id: string): Promise<AppAlbum> {
 
 /** Returns the authenticated user's playlists (up to 50). */
 export async function getPlaylists(): Promise<AppPlaylist[]> {
-  const data = await spotifyGet<{ items: SpotifyPlaylist[] }>(
+  const data = await spotifyGet<{ items: (SpotifyPlaylist | null)[] }>(
     '/me/playlists?limit=50',
   );
-  return data.items.map(mapPlaylist);
+  return data.items
+    .filter((item): item is SpotifyPlaylist => item != null)
+    .map(mapPlaylist);
+}
+
+/** Returns a single playlist with its tracks (up to 100). */
+export async function getPlaylist(id: string): Promise<AppAlbum> {
+  const data = await spotifyGet<SpotifyPlaylistFull>(
+    `/playlists/${id}?market=from_token`,
+  );
+  const raw = data as Record<string, unknown>;
+
+  if (!raw['items'] && !raw['tracks']) {
+    // Spotify 2024: /playlists/{id}/items replaced /playlists/{id}/tracks
+    try {
+      const tracksPage = await spotifyGet<SpotifyPlaylistTracksPage>(
+        `/playlists/${id}/items?limit=100&market=from_token`,
+      );
+      raw['items'] = tracksPage;
+    } catch {
+      // 403 = Spotify API restricts track access for non-owned playlists in Development Mode
+    }
+  }
+
+  return mapPlaylistFull(data);
 }
 
 /** Returns the authenticated user's recently played tracks (up to 20). */
