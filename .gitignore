@@ -25,3 +25,5 @@ dist-ssr
 hardware_requierments.md
 seesion_1_notes.md
 .gitignore
+project_phases.md
+backend/.env

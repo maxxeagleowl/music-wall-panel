@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from 'framer-motion';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { mockAlbums, getAlbumById } from './data/mockMusic';
-import { mockRooms } from './data/mockSonos';
+import * as playbackApi from './api/playbackApi';
+import * as sonosApi from './api/sonosApi';
 import type { Album, Track } from './types/music';
 import type { SonosRoom } from './types/sonos';
 import { CoverFlow } from './components/CoverFlow';
@@ -12,65 +13,63 @@ import { rgba, themeColors, themeEffects } from './theme/colors';
 
 const navItems = ['Auswahl', 'Playlists', 'Favoriten', 'Suche'];
 
-function parseDuration(duration: string) {
-  const [minutes, seconds] = duration.split(':').map(Number);
-  return minutes * 60 + seconds;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(max, Math.max(min, value));
-}
-
 export default function App() {
   const [activeNav, setActiveNav] = useState(navItems[0]);
   const [selectedAlbumId, setSelectedAlbumId] = useState(mockAlbums[0].id);
   const [flippedAlbumId, setFlippedAlbumId] = useState<string | null>(null);
+  const [isDraggingAlbum, setIsDraggingAlbum] = useState(false);
+  const [queueTrackId, setQueueTrackId] = useState<string | null>(null);
+  const [detailsTrack, setDetailsTrack] = useState<{ album: Album; track: Track } | null>(null);
+  const [rooms, setRooms] = useState<SonosRoom[]>([]);
+
+  // Playback state — authority lives in the backend; these are render copies kept in sync by polling
   const [nowPlayingAlbumId, setNowPlayingAlbumId] = useState(mockAlbums[0].id);
   const [currentTrackIndex, setCurrentTrackIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
-  const [isDraggingAlbum, setIsDraggingAlbum] = useState(false);
-  const [queueTrackId, setQueueTrackId] = useState<string | null>(null);
-  const [detailsTrack, setDetailsTrack] = useState<{ album: Album; track: Track } | null>(null);
-  const [rooms, setRooms] = useState<SonosRoom[]>(mockRooms);
+  const [total, setTotal] = useState(252);
 
   const nowPlayingAlbum = getAlbumById(nowPlayingAlbumId);
   const currentTrack = nowPlayingAlbum.tracks[currentTrackIndex] ?? nowPlayingAlbum.tracks[0];
-  const total = useMemo(() => parseDuration(currentTrack.duration), [currentTrack.duration]);
   const highlighted = isDraggingAlbum;
 
+  function applyBackendState(state: playbackApi.NowPlayingResponse) {
+    setIsPlaying(state.isPlaying);
+    setProgress(state.progress);
+    setCurrentTrackIndex(state.currentTrackIndex);
+    setNowPlayingAlbumId(state.currentAlbumId);
+    setTotal(state.totalDuration);
+  }
+
+  // Poll backend for playback state every 1 s
   useEffect(() => {
-    setProgress(0);
-    setCurrentTrackIndex(0);
-  }, [nowPlayingAlbumId]);
+    const sync = () =>
+      playbackApi.getNowPlaying().then(applyBackendState).catch(console.error);
+    sync();
+    const id = window.setInterval(sync, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
+  // Sonos rooms — fetched once on mount
   useEffect(() => {
-    if (!isPlaying) return undefined;
+    sonosApi.getRooms()
+      .then((backendRooms) => {
+        setRooms(backendRooms.map((r) => ({
+          id: r.id,
+          name: r.name,
+          volume: r.volume,
+          muted: r.muted,
+          active: r.groupId !== null,
+          groupId: r.groupId,
+          leader: false,
+        })));
+      })
+      .catch(console.error);
+  }, []);
 
-    const interval = window.setInterval(() => {
-      setProgress((value) => {
-        const next = value + 1;
-        if (next >= total) {
-          setCurrentTrackIndex((index) => {
-            const nextTrackIndex = index + 1;
-            if (nextTrackIndex >= nowPlayingAlbum.tracks.length) {
-              setIsPlaying(false);
-              return index;
-            }
-            return nextTrackIndex;
-          });
-          return 0;
-        }
-        return next;
-      });
-    }, 1000);
-
-    return () => window.clearInterval(interval);
-  }, [isPlaying, total, nowPlayingAlbum.tracks.length]);
-
+  // Queue toast auto-dismiss
   useEffect(() => {
     if (!queueTrackId) return undefined;
-
     const timeout = window.setTimeout(() => setQueueTrackId(null), 2400);
     return () => window.clearTimeout(timeout);
   }, [queueTrackId]);
@@ -86,21 +85,16 @@ export default function App() {
 
   const handleDropToNowPlaying = (albumId: string) => {
     setSelectedAlbumId(albumId);
-    setNowPlayingAlbumId(albumId);
-    setIsPlaying(true);
-    setProgress(0);
     setFlippedAlbumId(null);
+    playbackApi.playAlbum(albumId).then(applyBackendState).catch(console.error);
   };
 
   const handlePlayTrack = (albumId: string, track: Track) => {
     const album = getAlbumById(albumId);
-    const nextTrackIndex = Math.max(0, album.tracks.findIndex((entry) => entry.id === track.id));
+    const trackIndex = Math.max(0, album.tracks.findIndex((t) => t.id === track.id));
     setSelectedAlbumId(albumId);
-    setNowPlayingAlbumId(albumId);
-    setCurrentTrackIndex(nextTrackIndex);
-    setProgress(0);
-    setIsPlaying(true);
     setFlippedAlbumId(null);
+    playbackApi.playTrack(albumId, trackIndex).then(applyBackendState).catch(console.error);
   };
 
   const handleQueueTrack = (_albumId: string, track: Track) => {
@@ -112,21 +106,16 @@ export default function App() {
   };
 
   const handlePrevious = () => {
-    setCurrentTrackIndex((index) => {
-      const next = index - 1;
-      return next < 0 ? 0 : next;
-    });
-    setProgress(0);
-    setIsPlaying(true);
+    playbackApi.previous().then(applyBackendState).catch(console.error);
   };
 
   const handleNext = () => {
-    setCurrentTrackIndex((index) => {
-      const next = index + 1;
-      return next >= nowPlayingAlbum.tracks.length ? nowPlayingAlbum.tracks.length - 1 : next;
-    });
-    setProgress(0);
-    setIsPlaying(true);
+    playbackApi.next().then(applyBackendState).catch(console.error);
+  };
+
+  const handleTogglePlay = () => {
+    const action = isPlaying ? playbackApi.pause : playbackApi.play;
+    action().then(applyBackendState).catch(console.error);
   };
 
   const handleSwipePrev = () => {
@@ -148,58 +137,49 @@ export default function App() {
   };
 
   const handleSeek = (nextSeconds: number) => {
-    setProgress(clamp(nextSeconds, 0, total));
+    playbackApi.seek(nextSeconds).then(applyBackendState).catch(console.error);
   };
 
   const handleVolumeChange = (roomId: string, volume: number) => {
+    sonosApi.setVolume(roomId, volume).catch(console.error);
     setRooms((current) =>
       current.map((room) =>
         room.id === roomId
-          ? {
-              ...room,
-              volume,
-              muted: volume === 0
-            }
+          ? { ...room, volume, muted: volume === 0 }
           : room
       )
     );
   };
 
-const handleToggleMute = (roomId: string) => {
-  setRooms((current) =>
-    current.map((room) => {
-      if (room.id !== roomId) return room;
-
-      // Wenn aktuell hörbar → muten
-      if (room.volume > 0) {
-        return {
-          ...room,
-          previousVolume: room.volume,
-          volume: 0,
-          muted: true
-        };
-      }
-
-      // Wenn aktuell 0 → wiederherstellen
-      const restored = room.previousVolume ?? 40;
-
-      return {
-        ...room,
-        volume: restored,
-        muted: false
-      };
-    })
-  );
-};
+  const handleToggleMute = (roomId: string) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (room) {
+      sonosApi.setMute(roomId, room.volume > 0).catch(console.error);
+    }
+    setRooms((current) =>
+      current.map((r) => {
+        if (r.id !== roomId) return r;
+        if (r.volume > 0) {
+          return { ...r, previousVolume: r.volume, volume: 0, muted: true };
+        }
+        const restored = r.previousVolume ?? 40;
+        return { ...r, volume: restored, muted: false };
+      })
+    );
+  };
 
   const handleToggleGroup = (roomId: string) => {
+    const room = rooms.find((r) => r.id === roomId);
+    if (room) {
+      sonosApi.setGroup(roomId, room.groupId ? null : 'main').catch(console.error);
+    }
     setRooms((current) =>
-      current.map((room) => {
-        if (room.id !== roomId) return room;
-        if (room.groupId) {
-          return { ...room, groupId: null, active: false };
+      current.map((r) => {
+        if (r.id !== roomId) return r;
+        if (r.groupId) {
+          return { ...r, groupId: null, active: false };
         }
-        return { ...room, groupId: 'main', active: true };
+        return { ...r, groupId: 'main', active: true };
       })
     );
   };
@@ -266,7 +246,7 @@ const handleToggleMute = (roomId: string) => {
               total={total}
               highlighted={highlighted}
               onPrevious={handlePrevious}
-              onTogglePlay={() => setIsPlaying((value) => !value)}
+              onTogglePlay={handleTogglePlay}
               onNext={handleNext}
               onSeek={handleSeek}
             />

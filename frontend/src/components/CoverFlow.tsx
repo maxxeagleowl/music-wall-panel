@@ -89,7 +89,7 @@ export function CoverFlow({
       className="pointer-events-none absolute inset-0 overflow-hidden"
     >
       <div
-        className="absolute left-1/2 top-1/2 h-[420px]p w-[1300px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
+        className="absolute left-1/2 top-1/2 h-[420px] w-[1300px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-3xl"
         style={{
           background: `
             radial-gradient(
