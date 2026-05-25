@@ -6,6 +6,7 @@ import healthRouter from './routes/health';
 import playbackRouter from './routes/playback';
 import sonosRouter from './routes/sonos';
 import spotifyRouter from './routes/spotify';
+import spotifyAuthRouter from './routes/spotifyAuth';
 
 dotenv.config();
 
@@ -19,6 +20,7 @@ app.use('/api/health', healthRouter);
 app.use('/api', playbackRouter);
 app.use('/api/sonos', sonosRouter);
 app.use('/api/spotify', spotifyRouter);
+app.use('/api/auth/spotify', spotifyAuthRouter);
 
 app.listen(port, () => {
   console.log(`Backend listening on http://localhost:${port}`);

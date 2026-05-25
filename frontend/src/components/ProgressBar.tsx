@@ -1,4 +1,4 @@
-import { rgba, themeColors, themeEffects } from '../theme/colors';
+import { rgba, themeColors, } from '../theme/colors';
 
 type ProgressBarProps = {
   progress: number;

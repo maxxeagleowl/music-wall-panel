@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { mockAlbums, getAlbumById } from './data/mockMusic';
 import * as playbackApi from './api/playbackApi';
 import * as sonosApi from './api/sonosApi';
+import { getSpotifyStatus, spotifyLogout, type SpotifyStatus } from './api/spotifyAuthApi';
 import type { Album, Track } from './types/music';
 import type { SonosRoom } from './types/sonos';
 import { CoverFlow } from './components/CoverFlow';
@@ -21,6 +22,7 @@ export default function App() {
   const [queueTrackId, setQueueTrackId] = useState<string | null>(null);
   const [detailsTrack, setDetailsTrack] = useState<{ album: Album; track: Track } | null>(null);
   const [rooms, setRooms] = useState<SonosRoom[]>([]);
+  const [spotifyStatus, setSpotifyStatus] = useState<SpotifyStatus>({ connected: false });
 
   // Playback state — authority lives in the backend; these are render copies kept in sync by polling
   const [nowPlayingAlbumId, setNowPlayingAlbumId] = useState(mockAlbums[0].id);
@@ -66,6 +68,17 @@ export default function App() {
       })
       .catch(console.error);
   }, []);
+
+  // Spotify auth status — fetched once on mount
+  useEffect(() => {
+    getSpotifyStatus().then(setSpotifyStatus).catch(console.error);
+  }, []);
+
+  const handleSpotifyLogout = () => {
+    spotifyLogout()
+      .then(() => setSpotifyStatus({ connected: false }))
+      .catch(console.error);
+  };
 
   // Queue toast auto-dismiss
   useEffect(() => {
@@ -216,7 +229,12 @@ export default function App() {
         style={{ gridTemplateRows: '0.07fr 0.49fr 0.22fr 0.22fr' }}
       >
         <header className="min-h-0">
-          <TopNav active={activeNav} onSelect={setActiveNav} />
+          <TopNav
+            active={activeNav}
+            onSelect={setActiveNav}
+            spotifyStatus={spotifyStatus}
+            onSpotifyLogout={handleSpotifyLogout}
+          />
         </header>
 
         <main className="contents">
