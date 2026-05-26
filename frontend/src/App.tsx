@@ -3,6 +3,7 @@ import { useEffect, useState, useMemo, useRef } from 'react';
 import { mockAlbums, getAlbumById } from './data/mockMusic';
 import * as playbackApi from './api/playbackApi';
 import * as sonosApi from './api/sonosApi';
+import type { BackendRoom } from './api/sonosApi';
 import { getSpotifyStatus, spotifyLogout, type SpotifyStatus } from './api/spotifyAuthApi';
 import * as spotifyApi from './api/spotifyApi';
 import { useSpotifyLibrary } from './hooks/useSpotifyLibrary';
@@ -85,6 +86,8 @@ export default function App() {
   // Temporarily injected album/playlist from search result (not necessarily in saved library)
   const [searchInjectedAlbum, setSearchInjectedAlbum] = useState<{ album: Album; tab: 'Auswahl' | 'Playlists' } | null>(null);
   const pendingFetches = useRef<Set<string>>(new Set());
+  // Timestamp of last Sonos UI interaction — prevents poll from overwriting active slider/mute state
+  const lastSonosInteraction = useRef(0);
 
   // ── Playback state ──────────────────────────────────────────────────────────
   // Backend is the authority for timing; these are render copies kept in sync by polling.
@@ -340,20 +343,40 @@ export default function App() {
 
   // ── Bootstrap effects ───────────────────────────────────────────────────────
 
+  function mapBackendRoom(r: BackendRoom, existing?: { previousVolume?: number }): import('./types/sonos').SonosRoom {
+    return {
+      id: r.id,
+      name: r.name,
+      volume: r.volume,
+      muted: r.muted,
+      active: r.groupId !== null,
+      groupId: r.groupId,
+      leader: false,
+      available: r.available,
+      previousVolume: existing?.previousVolume,
+    };
+  }
+
   useEffect(() => {
-    sonosApi.getRooms()
-      .then((backendRooms) => {
-        setRooms(backendRooms.map((r) => ({
-          id: r.id,
-          name: r.name,
-          volume: r.volume,
-          muted: r.muted,
-          active: r.groupId !== null,
-          groupId: r.groupId,
-          leader: false,
-        })));
-      })
-      .catch(console.error);
+    function fetchRooms(force = false) {
+      // Skip poll if user is actively adjusting sliders/buttons (within last 3 s)
+      if (!force && Date.now() - lastSonosInteraction.current < 3000) return;
+      sonosApi.getRooms()
+        .then((backendRooms) => {
+          setRooms((current) =>
+            backendRooms.map((r) => {
+              const existing = current.find((c) => c.id === r.id);
+              return mapBackendRoom(r, existing);
+            })
+          );
+        })
+        .catch(console.error);
+    }
+
+    fetchRooms(true); // initial load always applies
+    const id = window.setInterval(() => fetchRooms(), 5000);
+    return () => window.clearInterval(id);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -593,17 +616,33 @@ export default function App() {
   // ── Sonos handlers ──────────────────────────────────────────────────────────
 
   const handleVolumeChange = (roomId: string, volume: number) => {
-    sonosApi.setVolume(roomId, volume).catch(console.error);
+    lastSonosInteraction.current = Date.now();
+
+    // Optimistic: update slider immediately so animation feels instant
     setRooms((current) =>
-      current.map((room) =>
-        room.id === roomId ? { ...room, volume, muted: volume === 0 } : room
-      )
+      current.map((r) => (r.id === roomId ? { ...r, volume, muted: volume === 0 } : r))
     );
+
+    // Confirm with backend; only update availability from response (volume is already correct)
+    sonosApi.setVolume(roomId, volume)
+      .then((updated) => {
+        setRooms((current) =>
+          current.map((r) =>
+            r.id === roomId ? { ...r, available: updated.available } : r
+          )
+        );
+      })
+      .catch(console.error);
   };
 
   const handleToggleMute = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
-    if (room) sonosApi.setMute(roomId, room.volume > 0).catch(console.error);
+    if (!room) return;
+
+    lastSonosInteraction.current = Date.now();
+    const newMuted = room.volume > 0; // mute when playing, unmute when already at 0
+
+    // Optimistic: volume-to-0 UX (matches SonosRoomCard's volume === 0 mute indicator)
     setRooms((current) =>
       current.map((r) => {
         if (r.id !== roomId) return r;
@@ -612,18 +651,48 @@ export default function App() {
         return { ...r, volume: restored, muted: false };
       })
     );
+
+    sonosApi.setMute(roomId, newMuted)
+      .then((updated) => {
+        setRooms((current) =>
+          current.map((r) =>
+            r.id === roomId
+              ? { ...r, muted: updated.muted, available: updated.available }
+              : r
+          )
+        );
+      })
+      .catch(console.error);
   };
 
   const handleToggleGroup = (roomId: string) => {
     const room = rooms.find((r) => r.id === roomId);
-    if (room) sonosApi.setGroup(roomId, room.groupId ? null : 'main').catch(console.error);
+    if (!room) return;
+
+    lastSonosInteraction.current = Date.now();
+    const newGroupId = room.groupId ? null : 'main';
+
+    // Optimistic
     setRooms((current) =>
       current.map((r) => {
         if (r.id !== roomId) return r;
-        if (r.groupId) return { ...r, groupId: null, active: false };
-        return { ...r, groupId: 'main', active: true };
+        return r.groupId
+          ? { ...r, groupId: null, active: false }
+          : { ...r, groupId: 'main', active: true };
       })
     );
+
+    sonosApi.setGroup(roomId, newGroupId)
+      .then((updated) => {
+        setRooms((current) =>
+          current.map((r) =>
+            r.id === roomId
+              ? { ...r, groupId: updated.groupId, active: updated.groupId !== null, available: updated.available }
+              : r
+          )
+        );
+      })
+      .catch(console.error);
   };
 
   // ── Render ──────────────────────────────────────────────────────────────────

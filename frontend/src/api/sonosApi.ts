@@ -6,6 +6,7 @@ export interface BackendRoom {
   volume: number;
   muted: boolean;
   groupId: string | null;
+  available?: boolean;
 }
 
 export const getRooms  = () => get<BackendRoom[]>('/api/sonos/rooms');

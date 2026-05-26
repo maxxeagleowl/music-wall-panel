@@ -1,25 +1,37 @@
 import { Router } from 'express';
 import * as playbackService from '../services/playbackService';
+import * as sonosService from '../services/sonosService';
 
 const router = Router();
+
+// Fire-and-forget Sonos transport — never blocks the response
+function sonosTransport(fn: () => Promise<void>): void {
+  fn().catch((err: unknown) => {
+    console.warn('[Sonos] transport command failed:', err instanceof Error ? err.message : err);
+  });
+}
 
 router.get('/now-playing', (_req, res) => {
   res.json(playbackService.getNowPlaying());
 });
 
 router.post('/play', (_req, res) => {
+  sonosTransport(() => sonosService.play());
   res.json(playbackService.play());
 });
 
 router.post('/pause', (_req, res) => {
+  sonosTransport(() => sonosService.pause());
   res.json(playbackService.pause());
 });
 
 router.post('/next', (_req, res) => {
+  sonosTransport(() => sonosService.next());
   res.json(playbackService.next());
 });
 
 router.post('/previous', (_req, res) => {
+  sonosTransport(() => sonosService.previous());
   res.json(playbackService.previous());
 });
 

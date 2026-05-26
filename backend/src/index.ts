@@ -7,6 +7,7 @@ import playbackRouter from './routes/playback';
 import sonosRouter from './routes/sonos';
 import spotifyRouter from './routes/spotify';
 import spotifyAuthRouter from './routes/spotifyAuth';
+import { initializeSonos } from './services/sonos/sonosAdapter';
 
 dotenv.config();
 
@@ -22,8 +23,16 @@ app.use('/api/sonos', sonosRouter);
 app.use('/api/spotify', spotifyRouter);
 app.use('/api/auth/spotify', spotifyAuthRouter);
 
-app.listen(port, () => {
-  console.log(`Backend listening on http://localhost:${port}`);
+async function main(): Promise<void> {
+  await initializeSonos();
+  app.listen(port, () => {
+    console.log(`Backend listening on http://localhost:${port}`);
+  });
+}
+
+main().catch((err) => {
+  console.error('[Startup] Fatal error:', err);
+  process.exit(1);
 });
 
 export default app;
