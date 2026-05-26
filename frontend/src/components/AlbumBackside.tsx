@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { ChevronDown } from 'lucide-react';
 import type { Album, Track } from '../types/music';
 import { TrackMenu } from './TrackMenu';
 import { rgba, themeColors, themeEffects } from '../theme/colors';
@@ -6,12 +7,13 @@ import { rgba, themeColors, themeEffects } from '../theme/colors';
 type AlbumBacksideProps = {
   album: Album;
   tracksLoading?: boolean;
+  onFlipBack: () => void;
   onPlayTrack: (track: Track) => void;
   onQueueTrack: (track: Track) => void;
   onShowTrackDetails: (track: Track) => void;
 };
 
-export function AlbumBackside({ album, tracksLoading, onPlayTrack, onQueueTrack, onShowTrackDetails }: AlbumBacksideProps) {
+export function AlbumBackside({ album, tracksLoading, onFlipBack, onPlayTrack, onQueueTrack, onShowTrackDetails }: AlbumBacksideProps) {
   return (
     <div
       className="flex h-full w-full flex-col rounded-[2rem] p-4 backdrop-blur-xl"
@@ -21,15 +23,18 @@ export function AlbumBackside({ album, tracksLoading, onPlayTrack, onQueueTrack,
         color: themeColors.neutral.text.primary
       }}
     >
-      <div
-        className="mb-3 flex items-end justify-between gap-4 pb-3"
+      <button
+        type="button"
+        onClick={onFlipBack}
+        className="mb-3 flex items-end justify-between gap-4 pb-3 text-left w-full"
         style={{ borderBottom: `1px solid ${rgba(themeColors.accent.goldSoft, 0.06)}` }}
       >
         <div>
           <h3 className="mt-2 font-display text-2xl tracking-tight">{album.title}</h3>
           <p className="mt-1 text-sm" style={{ color: themeColors.neutral.text.muted }}>{album.artist}</p>
         </div>
-      </div>
+        <ChevronDown size={16} style={{ color: themeColors.neutral.text.subtle, flexShrink: 0, marginBottom: 4 }} />
+      </button>
 
       <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         {tracksLoading && album.tracks.length === 0 ? (

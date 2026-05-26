@@ -1,15 +1,5 @@
-- slideback now playing to coverflow much slower
 - css für coler themes
-- zwei Räume aktiv aber drei in Sonos angezeigt
+- Raum gruppieren wie MAster volume
+- anzeige palylistname falls vorhanden
 
-
-npm run dev
-
-
-Test if be blocked
-
-Promt to be super precise / API get blocked / how test
-
-Green Tech...
-
-Fallback
+- queue funktioniert noch nicht bei flip -sonos

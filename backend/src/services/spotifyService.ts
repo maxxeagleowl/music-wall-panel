@@ -96,7 +96,7 @@ export async function getPlaylist(id: string): Promise<AppAlbum> {
 /** Returns the authenticated user's recently played tracks (up to 20). */
 export async function getRecentlyPlayed(): Promise<AppRecentTrack[]> {
   const data = await spotifyGet<{ items: SpotifyRecentlyPlayedItem[] }>(
-    '/me/player/recently-played?limit=20',
+    '/me/player/recently-played?limit=50',
   );
   return data.items.map(mapRecentTrack);
 }

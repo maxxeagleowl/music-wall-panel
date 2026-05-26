@@ -17,7 +17,7 @@ import { rgba, themeColors, themeEffects } from './theme/colors';
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-const NAV_ITEMS = ['Auswahl', 'Playlists', 'Favoriten', 'Suche'] as const;
+const NAV_ITEMS = ['Playlists', 'Zuletzt', 'Auswahl', 'Suche'] as const;
 type NavItem = (typeof NAV_ITEMS)[number];
 
 const SPOTIFY_ACCENT = 'linear-gradient(135deg, #1a1a2e 0%, #0d0d18 100%)';
@@ -51,7 +51,7 @@ const EMPTY_PLAYLISTS: Album = {
 const EMPTY_FAVORITEN: Album = {
   id: '__empty-favoriten__',
   artist: '',
-  title: 'Keine Verlauf',
+  title: 'Noch nichts gespielt',
   year: new Date().getFullYear(),
   genre: '',
   mood: 'Höre etwas in Spotify ab',
@@ -171,17 +171,48 @@ export default function App() {
       return [EMPTY_PLAYLISTS];
     }
 
-    if (activeNav === 'Favoriten') {
-      // Build from recently played unique albums (different from saved library)
+    if (activeNav === 'Zuletzt') {
+      // Group by context (playlist or album) — same logic as Spotify app
       const seenIds = new Set<string>();
-      const recentAlbums: Album[] = [];
+      const recentItems: Album[] = [];
+
       for (const item of recentTracks) {
-        const albumId = item.track.albumId;
-        if (seenIds.has(albumId)) continue;
-        seenIds.add(albumId);
-        recentAlbums.push(
-          enrichedAlbumsById[albumId] ?? {
-            id: albumId,
+        // Use context ID (playlist/album the user played FROM), fall back to track's album
+        const contextId = item.context?.id ?? item.track.albumId;
+        const contextType = item.context?.type ?? 'album';
+
+        if (seenIds.has(contextId)) continue;
+        seenIds.add(contextId);
+
+        // If already enriched, use that
+        if (enrichedAlbumsById[contextId]) {
+          recentItems.push(enrichedAlbumsById[contextId]!);
+          continue;
+        }
+
+        if (contextType === 'playlist') {
+          // Look up playlist metadata from the library
+          const pl = playlists.find((p) => p.id === contextId);
+          recentItems.push({
+            id: contextId,
+            artist: pl?.owner ?? 'Playlist',
+            title: pl?.name ?? 'Playlist',
+            year: new Date(item.playedAt).getFullYear(),
+            genre: pl ? `${pl.trackCount} Tracks` : 'Playlist',
+            mood: new Date(item.playedAt).toLocaleDateString('de-DE'),
+            label: '',
+            accent: SPOTIFY_ACCENT,
+            accentSoft: SPOTIFY_ACCENT_SOFT,
+            coverTag: (pl?.name ?? 'PL').slice(0, 2).toUpperCase(),
+            coverPattern: SPOTIFY_COVER_PATTERN,
+            coverText: (pl?.name ?? 'PL').slice(0, 2).toUpperCase(),
+            coverUrl: pl?.coverUrl ?? null,
+            tracks: [],
+          });
+        } else {
+          // Album context (or no context — use track's album)
+          recentItems.push({
+            id: contextId,
             artist: item.track.artist,
             title: item.albumTitle,
             year: new Date(item.playedAt).getFullYear(),
@@ -195,10 +226,10 @@ export default function App() {
             coverText: item.albumTitle.slice(0, 2).toUpperCase(),
             coverUrl: item.albumCoverUrl,
             tracks: [],
-          },
-        );
+          });
+        }
       }
-      return recentAlbums.length > 0 ? recentAlbums : [EMPTY_FAVORITEN];
+      return recentItems.length > 0 ? recentItems : [EMPTY_FAVORITEN];
     }
 
     // 'Auswahl' — saved library
@@ -386,9 +417,12 @@ export default function App() {
     if (isMock) {
       playbackApi.playAlbum(albumId).then(applyBackendState).catch(console.error);
     } else {
-      // Spotify album: fetch details so queue populates, keep simulated backend running
+      // Spotify album: reset backend progress to 0, then start playing
       ensureAlbumDetails(albumId);
-      playbackApi.play().then(applyBackendState).catch(console.error);
+      playbackApi.seek(0)
+        .then(() => playbackApi.play())
+        .then(applyBackendState)
+        .catch(console.error);
     }
   };
 
@@ -575,54 +609,6 @@ export default function App() {
               onDragStateChange={setIsDraggingAlbum}
             />
 
-            {/* Recently played strip — non-disruptive, only when data exists */}
-            <AnimatePresence>
-              {spotifyLibrary.recentTracks.length > 0 && (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  transition={{ duration: 0.4 }}
-                  className="pointer-events-none absolute bottom-3 left-4 right-4 flex items-center gap-2"
-                >
-                  <span
-                    className="shrink-0 font-display text-[0.55rem] uppercase tracking-[0.3em]"
-                    style={{ color: themeColors.neutral.text.subtle }}
-                  >
-                    Zuletzt
-                  </span>
-                  <div className="flex gap-1.5 overflow-hidden">
-                    {spotifyLibrary.recentTracks.slice(0, 6).map((item, i) => (
-                      <div
-                        key={`${item.track.id}-${i}`}
-                        className="h-6 w-6 shrink-0 overflow-hidden rounded"
-                        style={{
-                          border: themeEffects.neutral.border.subtle,
-                          backgroundColor: rgba(themeColors.panel, 0.6),
-                        }}
-                        title={`${item.track.title} · ${item.albumTitle}`}
-                      >
-                        {item.albumCoverUrl ? (
-                          <img
-                            src={item.albumCoverUrl}
-                            alt={item.albumTitle}
-                            className="h-full w-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div
-                            className="flex h-full w-full items-center justify-center text-[0.4rem]"
-                            style={{ color: themeColors.neutral.text.subtle }}
-                          >
-                            {item.albumTitle.slice(0, 1)}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
           </section>
 
           {/* ── NowPlaying ── */}

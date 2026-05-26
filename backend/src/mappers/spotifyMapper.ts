@@ -67,6 +67,10 @@ export interface AppRecentTrack {
   albumTitle: string;
   albumCoverUrl: string | null;
   playedAt: string;
+  context: {
+    type: 'album' | 'playlist' | 'artist';
+    id: string;
+  } | null;
 }
 
 export interface AppSearchTrack {
@@ -200,6 +204,7 @@ export function mapDevice(d: SpotifyDevice): AppDevice {
 }
 
 export function mapRecentTrack(item: SpotifyRecentlyPlayedItem): AppRecentTrack {
+  const contextId = item.context?.uri?.split(':').pop() ?? null;
   return {
     track: {
       id: item.track.id,
@@ -212,6 +217,9 @@ export function mapRecentTrack(item: SpotifyRecentlyPlayedItem): AppRecentTrack 
     albumTitle: item.track.album.name,
     albumCoverUrl: item.track.album.images[0]?.url ?? null,
     playedAt: item.played_at,
+    context: item.context && contextId
+      ? { type: item.context.type, id: contextId }
+      : null,
   };
 }
 

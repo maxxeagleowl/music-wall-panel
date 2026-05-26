@@ -87,6 +87,10 @@ export interface SpotifyDevice {
 export interface SpotifyRecentlyPlayedItem {
   track: SpotifyTrackSimple & { album: SpotifyAlbumSimple };
   played_at: string;
+  context: {
+    type: 'album' | 'playlist' | 'artist';
+    uri: string;
+  } | null;
 }
 
 export interface SpotifySearchResult {

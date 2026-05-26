@@ -10,7 +10,7 @@ type TopNavProps = {
   activeDeviceName?: string | null;
 };
 
-const items = ['Auswahl', 'Playlists', 'Favoriten', 'Suche'];
+const items = ['Playlists', 'Zuletzt', 'Auswahl', 'Suche'];
 
 function SpotifyControl({
   status,

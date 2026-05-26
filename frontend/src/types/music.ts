@@ -55,6 +55,10 @@ export type RecentTrack = {
   albumTitle: string;
   albumCoverUrl: string | null;
   playedAt: string;
+  context: {
+    type: 'album' | 'playlist' | 'artist';
+    id: string;
+  } | null;
 };
 
 export type SearchTrack = {

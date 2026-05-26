@@ -380,6 +380,7 @@ export function AlbumCard({
               <AlbumBackside
                 album={album}
                 tracksLoading={tracksLoading}
+                onFlipBack={onFlip}
                 onPlayTrack={onPlayTrack}
                 onQueueTrack={onQueueTrack}
                 onShowTrackDetails={onShowTrackDetails}
