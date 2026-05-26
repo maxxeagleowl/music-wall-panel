@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion';
+import { useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
 import type { Album, Track } from '../types/music';
 import { PlaybackControls } from './PlaybackControls';
@@ -17,6 +18,8 @@ type NowPlayingProps = {
   onTogglePlay: () => void;
   onNext: () => void;
   onSeek: (nextSeconds: number) => void;
+  onQueueTrackSelect?: (track: Track) => void;
+  isPlaylist?: boolean;
 };
 
 export function NowPlaying({
@@ -29,16 +32,34 @@ export function NowPlaying({
   onPrevious,
   onTogglePlay,
   onNext,
-  onSeek
+  onSeek,
+  onQueueTrackSelect,
+  isPlaylist
 }: NowPlayingProps) {
+  const queueScrollRef = useRef<HTMLDivElement>(null);
+  const scrollResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+    };
+  }, []);
+
+  function handleQueueScroll() {
+    if (scrollResetTimer.current) clearTimeout(scrollResetTimer.current);
+    scrollResetTimer.current = setTimeout(() => {
+      queueScrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 4000);
+  }
+
   const visualTheme = createMockAlbumTheme(album);
   const currentIndex = album.tracks.findIndex(t => t.id === track.id);
   const safeIndex = currentIndex >= 0 ? currentIndex : 0;
   const trackCount = album.tracks.length;
-  const queueTracks = trackCount > 0
-    ? [1, 2, 3, 4]
-        .map(offset => album.tracks[(safeIndex + offset) % trackCount])
-        .filter((t): t is NonNullable<typeof t> => t !== undefined)
+  const queueTracks = trackCount > 1
+    ? Array.from({ length: trackCount - 1 }, (_, i) =>
+        album.tracks[(safeIndex + 1 + i) % trackCount]
+      ).filter((t): t is NonNullable<typeof t> => t !== undefined)
     : [];
   const coverLabel = album.coverText.trim() || visualTheme.textOnCover;
 
@@ -67,6 +88,14 @@ export function NowPlaying({
         {/* Zone 1 — Metadata */}
         <div className="flex items-center pl-3">
           <div className="max-w-[20ch] overflow-hidden">
+            {isPlaylist && (
+              <p
+                className="mb-4 truncate text-[0.56rem] uppercase tracking-[0.34em]"
+                style={{ color: themeColors.neutral.text.faint }}
+              >
+                {album.title}
+              </p>
+            )}
             <p
               className="truncate text-[0.56rem] uppercase tracking-[0.34em]"
               style={{
@@ -212,39 +241,42 @@ export function NowPlaying({
             </div>
 
             {queueTracks.length > 0 ? (
-              <div className="space-y-2.5">
-                {queueTracks.map((qTrack, index) => (
-                  <div
-                    key={qTrack.id}
-                    className="grid items-center gap-3"
-                    style={{ gridTemplateColumns: '1.7rem 1fr 2.4rem' }}
-                  >
-                    <span
-                      className="text-[0.58rem] tabular-nums"
-                      style={{
-                        color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
-                      }}
+              <div style={{ maxHeight: '5.6rem', overflow: 'hidden' }}>
+                <div ref={queueScrollRef} className="overflow-y-auto space-y-2.5" style={{ maxHeight: '5.6rem', marginRight: '-20px', paddingRight: '20px' }} onScroll={handleQueueScroll}>
+                  {queueTracks.map((qTrack, index) => (
+                    <div
+                      key={qTrack.id}
+                      className="grid cursor-pointer items-center gap-3"
+                      style={{ gridTemplateColumns: '1.7rem 1fr 2.4rem' }}
+                      onClick={() => onQueueTrackSelect?.(qTrack)}
                     >
-                      {String(qTrack.number).padStart(2, '0')}
-                    </span>
-                    <span
-                      className="truncate text-[0.72rem] tracking-[0.02em]"
-                      style={{
-                        color: index === 0 ? themeColors.neutral.text.secondary : themeColors.neutral.text.faint
-                      }}
-                    >
-                      {qTrack.title}
-                    </span>
-                    <span
-                      className="text-right text-[0.58rem] tabular-nums"
-                      style={{
-                        color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
-                      }}
-                    >
-                      {qTrack.duration}
-                    </span>
-                  </div>
-                ))}
+                      <span
+                        className="text-[0.58rem] tabular-nums"
+                        style={{
+                          color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
+                        }}
+                      >
+                        {String(qTrack.number).padStart(2, '0')}
+                      </span>
+                      <span
+                        className="truncate text-[0.72rem] tracking-[0.02em]"
+                        style={{
+                          color: index === 0 ? themeColors.neutral.text.secondary : themeColors.neutral.text.soft
+                        }}
+                      >
+                        {qTrack.title}
+                      </span>
+                      <span
+                        className="text-right text-[0.58rem] tabular-nums"
+                        style={{
+                          color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
+                        }}
+                      >
+                        {qTrack.duration}
+                      </span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <p

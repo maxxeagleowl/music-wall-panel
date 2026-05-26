@@ -106,3 +106,12 @@ input[type="range"]::-moz-range-thumb {
   background: var(--theme-slider-thumb-fill);
   box-shadow: 0 0 0 6px var(--theme-slider-thumb-ring);
 }
+
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+}

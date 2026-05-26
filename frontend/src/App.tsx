@@ -74,6 +74,7 @@ export default function App() {
 
   const [selectedAlbumId, setSelectedAlbumId] = useState(mockAlbums[0].id);
   const [flippedAlbumId, setFlippedAlbumId] = useState<string | null>(null);
+  const flipResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDraggingAlbum, setIsDraggingAlbum] = useState(false);
   const [queueTrackId, setQueueTrackId] = useState<string | null>(null);
   const [detailsTrack, setDetailsTrack] = useState<{ album: Album; track: Track } | null>(null);
@@ -291,6 +292,9 @@ export default function App() {
   const nowPlayingAlbum = getDisplayedAlbumById(nowPlayingDisplayAlbumId);
   const currentTrack = getSafeTrack(nowPlayingAlbum, currentTrackIndex);
   const highlighted = isDraggingAlbum;
+  const isNowPlayingPlaylist =
+    spotifyLibrary.playlists.some((p) => p.id === nowPlayingDisplayAlbumId) ||
+    (searchInjectedAlbum?.tab === 'Playlists' && searchInjectedAlbum.album.id === nowPlayingDisplayAlbumId);
 
   // ── Playback polling ────────────────────────────────────────────────────────
   function applyBackendState(state: playbackApi.NowPlayingResponse) {
@@ -464,7 +468,12 @@ export default function App() {
   };
 
   const handleFlipAlbum = (albumId: string) => {
-    setFlippedAlbumId((current) => (current === albumId ? null : albumId));
+    if (flipResetTimer.current) clearTimeout(flipResetTimer.current);
+    const isFlippingBack = flippedAlbumId === albumId;
+    setFlippedAlbumId(isFlippingBack ? null : albumId);
+    if (!isFlippingBack) {
+      flipResetTimer.current = setTimeout(() => setFlippedAlbumId(null), 10000);
+    }
     const isMock = mockAlbums.some((a) => a.id === albumId);
     if (!isMock && !albumId.startsWith('__')) {
       ensureAlbumDetails(albumId);
@@ -515,7 +524,7 @@ export default function App() {
       setCurrentTrackIndex(trackIndex);
       setProgress(0);
       setIsPlaying(true);
-      playbackApi.play().catch(console.error);
+      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
     }
   };
 
@@ -556,7 +565,7 @@ export default function App() {
       const count = album?.tracks.length ?? 0;
       setCurrentTrackIndex((i) => (count > 0 ? (i - 1 + count) % count : i));
       setProgress(0);
-      playbackApi.play().catch(console.error);
+      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
     }
   };
 
@@ -568,7 +577,7 @@ export default function App() {
       const count = album?.tracks.length ?? 0;
       setCurrentTrackIndex((i) => (count > 0 ? (i + 1) % count : i));
       setProgress(0);
-      playbackApi.play().catch(console.error);
+      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
     }
   };
 
@@ -695,6 +704,8 @@ export default function App() {
               onTogglePlay={handleTogglePlay}
               onNext={handleNext}
               onSeek={handleSeek}
+              onQueueTrackSelect={(t) => handlePlayTrack(nowPlayingAlbum.id, t)}
+              isPlaylist={isNowPlayingPlaylist}
             />
           </section>
 
