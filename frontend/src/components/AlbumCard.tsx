@@ -1,4 +1,4 @@
-import { AnimatePresence, animate, motion, useMotionValue, useTransform } from 'framer-motion';
+import { animate, motion, useMotionValue, useTransform } from 'framer-motion';
 import { useEffect } from 'react';
 import type { Album, Track } from '../types/music';
 import { AlbumBackside } from './AlbumBackside';
@@ -163,9 +163,10 @@ export function AlbumCard({
                 x: dragX,
                 y: dragY,
                 rotateY: dragRotateY,
-                rotateX: dragRotateX
+                rotateX: dragRotateX,
+                transformStyle: 'preserve-3d'
               }
-            : undefined
+            : { transformStyle: 'preserve-3d' }
         }
         onDragStart={() => onDragStateChange(true)}
         onDragEnd={(_, info) => {
@@ -199,19 +200,20 @@ export function AlbumCard({
           }
         }}
       >
-        <AnimatePresence mode="wait" initial={false}>
-          {!flipped ? (
+        {/* 3D flip container — rotates the whole card */}
+        <motion.div
+          className="relative h-full w-full"
+          animate={{ rotateY: flipped ? 180 : 0 }}
+          transition={{ type: 'spring', stiffness: 100, damping: 18, mass: 1.2 }}
+          style={{ transformStyle: 'preserve-3d' }}
+        >
+
+        {/* ── Front face ── */}
+        <div
+          className="absolute inset-0"
+          style={{ backfaceVisibility: 'hidden', pointerEvents: flipped ? 'none' : 'auto' }}
+        >
             <motion.div
-              key="front"
-              initial={{ rotateY: 0, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              exit={{ rotateY: 180, opacity: 0 }}
-              transition={{
-                type: 'spring',
-                stiffness: 120,
-                damping: 18,
-                mass: 1.2
-              }}
               className="relative h-full w-full overflow-hidden rounded-[28px]"
               style={{
                 border: themeEffects.border.subtle,
@@ -357,37 +359,28 @@ export function AlbumCard({
                 </div>
               </div>
             </motion.div>
-          ) : (
-            <motion.div
-              key="back"
-              initial={{ rotateY: -180, opacity: 0 }}
-              animate={{ rotateY: 0, opacity: 1 }}
-              exit={{ rotateY: 0, opacity: 0 }}
-              transition={{
-                type: 'spring',
-                stiffness: 110,
-                damping: 20,
-                mass: 1.3
-              }}
-              className="h-full w-full overflow-hidden rounded-[28px]"
-              style={{
-                transformStyle: 'preserve-3d',
-                aspectRatio: '1 / 1'
-              }}
-              onPointerDown={(event) => event.stopPropagation()}
-              onClick={(event) => event.stopPropagation()}
-            >
-              <AlbumBackside
-                album={album}
-                tracksLoading={tracksLoading}
-                onFlipBack={onFlip}
-                onPlayTrack={onPlayTrack}
-                onQueueTrack={onQueueTrack}
-                onShowTrackDetails={onShowTrackDetails}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
+        </div>
+
+        {/* ── Back face ── */}
+        <div
+          className="absolute inset-0 overflow-hidden rounded-[28px]"
+          style={{
+            backfaceVisibility: 'hidden',
+            transform: 'rotateY(180deg)',
+            pointerEvents: flipped ? 'auto' : 'none'
+          }}
+        >
+          <AlbumBackside
+            album={album}
+            tracksLoading={tracksLoading}
+            onFlipBack={onFlip}
+            onPlayTrack={onPlayTrack}
+            onQueueTrack={onQueueTrack}
+            onShowTrackDetails={onShowTrackDetails}
+          />
+        </div>
+
+        </motion.div>{/* end flip container */}
       </motion.div>
     </motion.div>
   );

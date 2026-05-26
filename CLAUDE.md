@@ -179,13 +179,11 @@ backend/src/
 
 ---
 
-## Offene Punkte (Stand: 2026-05-25)
+## Offene Punkte (Stand: 2026-05-26)
 
 | Priorität | Problem | Details |
 |-----------|---------|---------|
 | hoch | **Suche funktioniert nicht** | Search-Overlay vorhanden, aber Ergebnisse kommen nicht an |
-| mittel | **CoverFlow: Tracklist-Flip** | Erfordert derzeit Doppeltipp — soll Einzeltipp sein. Außerdem kein Zurücktippen möglich (kein Flip-Back via erneuten Tap) |
-| mittel | **UI zeigt zuletzt gehört, nicht erstes Album** | "Favoriten"-Tab soll zuletzt gehörte Titel zeigen statt Erstes |
 | niedrig | **Play-Bug: Neustart beim Quellwechsel** | Wenn neue Musikquelle gewählt wird, startet Progress Bar von vorne — wirkt als würde Track neu starten. Aktuell kein Audio vorhanden zum Bestätigen |
 | mittel | **Workaround blockierte Playlists** | Für Playlists ohne Track-Daten (403 von Spotify): beim Runterziehen in NowPlaying soll trotzdem abgespielt werden. NowPlaying soll aktuellen Titel + Album anzeigen (via Spotify `/me/player` Polling statt lokaler Track-Liste). Queue aus Spotify Playback State befüllen. **Noch nicht ausführen — erst planen.** |
 | niedrig | **Spotify Quota Extension beantragen** | Fremde öffentliche Playlists geben 403 auf Track-Endpoints — Spotify Policy für Apps im Development Mode. Quota Extension im Developer Dashboard beantragen wenn Projekt weiter reift. Bis dahin: nur eigene Playlists + kollaborative Playlists (als Mitglied) funktionieren. |
@@ -201,3 +199,4 @@ backend/src/
 | 2026-05-25 | CLAUDE.md angelegt, Entscheidungen und offene Punkte erfasst |
 | 2026-05-25 | Playlists vollständig gefixt: CoverFlow zeigt Playlists, Tracklist lädt korrekt, NowPlaying zeigt Track-Metadaten (Cover, Artist, Titel) statt Playlist-Daten, Queue funktioniert. Root Cause: Spotify 2024 API Breaking Changes — `tracks`→`items` auf Playlist-Ebene UND `track`→`item` innerhalb der Playlist-Track-Items. Beides in types/spotify.ts und spotifyMapper.ts gefixt mit Fallback für alte + neue API. |
 | 2026-05-25 | Weitere Playlist-Fixes: Next/Prev navigiert korrekt durch Playlist-Tracks (Backend-Index nicht mehr für Spotify-Content verwendet), CoverFlow-Flip-Back beim Track-Laden behoben, Fremd-Playlists: Spotify Development Mode sperrt Track-Zugriff mit 403 — Quota Extension nötig (TODO). Scope `playlist-read-collaborative` hinzugefügt. |
+| 2026-05-26 | Progress-Reset-Bug gefixt: Beim Einlegen eines Spotify-Albums via Drag wird jetzt `seek(0)` vor `play()` aufgerufen — verhindert dass alter Backend-Progress zurückgeschrieben wird. Nav umgebaut: Reihenfolge Playlists→Zuletzt→Auswahl, "Favoriten" in "Zuletzt" umbenannt, Playlists als Default-Tab. Zuletzt-Tab zeigt jetzt Alben UND Playlists korrekt (Spotify `context`-Feld aus recently-played ausgelesen, URI zu ID aufgelöst). Recently-played Limit 20→50. Zuletzt-Strip unter CoverFlow entfernt. CoverFlow-Flip auf echtes CSS-3D-Card-Flip umgebaut (backface-visibility, keine AnimatePresence-Lücke mehr). Flip-Back via Tipp auf Header-Bereich der Rückseite. Track-Tipp auf Rückseite flippt nicht mehr zurück. |

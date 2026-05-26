@@ -69,7 +69,7 @@ const EMPTY_FAVORITEN: Album = {
 
 export default function App() {
   // Nav: 'Suche' never written to activeNav — handled via searchOpen instead
-  const [activeNav, setActiveNav] = useState<Exclude<NavItem, 'Suche'>>('Auswahl');
+  const [activeNav, setActiveNav] = useState<Exclude<NavItem, 'Suche'>>('Playlists');
   const [searchOpen, setSearchOpen] = useState(false);
 
   const [selectedAlbumId, setSelectedAlbumId] = useState(mockAlbums[0].id);
@@ -431,7 +431,6 @@ export default function App() {
 
     setSelectedAlbumId(albumId);
     setNowPlayingAlbum(albumId);
-    setFlippedAlbumId(null);
 
     if (isMock) {
       const album = getAlbumById(albumId);
