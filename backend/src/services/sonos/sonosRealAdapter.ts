@@ -365,75 +365,56 @@ export class SonosRealAdapter implements SonosAdapter {
     return updated;
   }
 
-  private getPrimaryIP(): string | null {
+  private getPrimaryDevice(): { ip: string; name: string } | null {
     const primary = this.devices.get(this.primaryRoomId);
-    if (primary) return primary.ip;
-    const first = Array.from(this.devices.values())[0];
-    return first?.ip ?? null;
+    if (primary) {
+      const name = this.rooms.get(this.primaryRoomId)?.name ?? this.primaryRoomId;
+      return { ip: primary.ip, name };
+    }
+    const firstId = Array.from(this.devices.keys())[0];
+    if (!firstId) return null;
+    const first = this.devices.get(firstId)!;
+    const name = this.rooms.get(firstId)?.name ?? firstId;
+    return { ip: first.ip, name };
+  }
+
+  private async avTransport(action: string, innerBody: string): Promise<void> {
+    const device = this.getPrimaryDevice();
+    if (!device) {
+      const msg = `${action}: no Sonos device available (primary: ${this.primaryRoomId})`;
+      console.error(`[Sonos] transport ✗ | action: ${action} | ${msg}`);
+      throw new Error(msg);
+    }
+    console.log(`[Sonos] transport → | action: ${action} | room: "${device.name}" | ip: ${device.ip}`);
+    try {
+      await avTransportAction(device.ip, action, innerBody, this.commandTimeoutMs);
+      console.log(`[Sonos] transport ✓ | action: ${action} | room: "${device.name}" | ip: ${device.ip}`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[Sonos] transport ✗ | action: ${action} | room: "${device.name}" | ip: ${device.ip} | ${msg}`);
+      this.lastError = msg;
+      throw err;
+    }
   }
 
   async play(): Promise<void> {
-    const ip = this.getPrimaryIP();
-    if (!ip) { console.warn('[Sonos] play: no device available'); return; }
-    try {
-      await avTransportAction(ip, 'Play',
-        `<u:Play xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play>`,
-        this.commandTimeoutMs,
-      );
-      console.log('[Sonos] play ✓');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Sonos] play failed:', msg);
-      this.lastError = msg;
-    }
+    await this.avTransport('Play',
+      `<u:Play xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID><Speed>1</Speed></u:Play>`);
   }
 
   async pause(): Promise<void> {
-    const ip = this.getPrimaryIP();
-    if (!ip) { console.warn('[Sonos] pause: no device available'); return; }
-    try {
-      await avTransportAction(ip, 'Pause',
-        `<u:Pause xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Pause>`,
-        this.commandTimeoutMs,
-      );
-      console.log('[Sonos] pause ✓');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Sonos] pause failed:', msg);
-      this.lastError = msg;
-    }
+    await this.avTransport('Pause',
+      `<u:Pause xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Pause>`);
   }
 
   async next(): Promise<void> {
-    const ip = this.getPrimaryIP();
-    if (!ip) { console.warn('[Sonos] next: no device available'); return; }
-    try {
-      await avTransportAction(ip, 'Next',
-        `<u:Next xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Next>`,
-        this.commandTimeoutMs,
-      );
-      console.log('[Sonos] next ✓');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Sonos] next failed:', msg);
-      this.lastError = msg;
-    }
+    await this.avTransport('Next',
+      `<u:Next xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Next>`);
   }
 
   async previous(): Promise<void> {
-    const ip = this.getPrimaryIP();
-    if (!ip) { console.warn('[Sonos] previous: no device available'); return; }
-    try {
-      await avTransportAction(ip, 'Previous',
-        `<u:Previous xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Previous>`,
-        this.commandTimeoutMs,
-      );
-      console.log('[Sonos] previous ✓');
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.error('[Sonos] previous failed:', msg);
-      this.lastError = msg;
-    }
+    await this.avTransport('Previous',
+      `<u:Previous xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Previous>`);
   }
 
   getDiagnostics(): SonosDiagnostics {

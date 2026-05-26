@@ -4,34 +4,75 @@ import * as sonosService from '../services/sonosService';
 
 const router = Router();
 
-// Fire-and-forget Sonos transport — never blocks the response
-function sonosTransport(fn: () => Promise<void>): void {
-  fn().catch((err: unknown) => {
-    console.warn('[Sonos] transport command failed:', err instanceof Error ? err.message : err);
-  });
+function isRealMode(): boolean {
+  return sonosService.getDiagnostics().mode === 'real';
 }
 
 router.get('/now-playing', (_req, res) => {
   res.json(playbackService.getNowPlaying());
 });
 
-router.post('/play', (_req, res) => {
-  sonosTransport(() => sonosService.play());
+router.post('/play', async (_req, res) => {
+  const real = isRealMode();
+  console.log(`[Playback Route] action=play SONOS_MODE=${process.env.SONOS_MODE ?? 'unset'} adapterMode=${real ? 'real' : 'mock'}`);
+  if (real) {
+    try {
+      await sonosService.play();
+      res.json({ ok: true, mode: 'real', action: 'play' });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'play', error });
+    }
+    return;
+  }
   res.json(playbackService.play());
 });
 
-router.post('/pause', (_req, res) => {
-  sonosTransport(() => sonosService.pause());
+router.post('/pause', async (_req, res) => {
+  const real = isRealMode();
+  console.log(`[Playback Route] action=pause SONOS_MODE=${process.env.SONOS_MODE ?? 'unset'} adapterMode=${real ? 'real' : 'mock'}`);
+  if (real) {
+    try {
+      await sonosService.pause();
+      res.json({ ok: true, mode: 'real', action: 'pause' });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'pause', error });
+    }
+    return;
+  }
   res.json(playbackService.pause());
 });
 
-router.post('/next', (_req, res) => {
-  sonosTransport(() => sonosService.next());
+router.post('/next', async (_req, res) => {
+  const real = isRealMode();
+  console.log(`[Playback Route] action=next SONOS_MODE=${process.env.SONOS_MODE ?? 'unset'} adapterMode=${real ? 'real' : 'mock'}`);
+  if (real) {
+    try {
+      await sonosService.next();
+      res.json({ ok: true, mode: 'real', action: 'next' });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'next', error });
+    }
+    return;
+  }
   res.json(playbackService.next());
 });
 
-router.post('/previous', (_req, res) => {
-  sonosTransport(() => sonosService.previous());
+router.post('/previous', async (_req, res) => {
+  const real = isRealMode();
+  console.log(`[Playback Route] action=previous SONOS_MODE=${process.env.SONOS_MODE ?? 'unset'} adapterMode=${real ? 'real' : 'mock'}`);
+  if (real) {
+    try {
+      await sonosService.previous();
+      res.json({ ok: true, mode: 'real', action: 'previous' });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'previous', error });
+    }
+    return;
+  }
   res.json(playbackService.previous());
 });
 

@@ -3,3 +3,5 @@
 - Shuffle Button
 
 - queue funktioniert noch nicht bei flip -sonos
+
+- bidirectional volume / play now / group

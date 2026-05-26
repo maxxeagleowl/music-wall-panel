@@ -88,6 +88,9 @@ export default function App() {
   const pendingFetches = useRef<Set<string>>(new Set());
   // Timestamp of last Sonos UI interaction — prevents poll from overwriting active slider/mute state
   const lastSonosInteraction = useRef(0);
+  // Set to true when any transport command (play/pause/next/prev) gets a real-mode null response.
+  // Prevents mock polling from overwriting isPlaying after a real Sonos command.
+  const isRealTransportModeRef = useRef(false);
 
   // ── Playback state ──────────────────────────────────────────────────────────
   // Backend is the authority for timing; these are render copies kept in sync by polling.
@@ -300,8 +303,12 @@ export default function App() {
     (searchInjectedAlbum?.tab === 'Playlists' && searchInjectedAlbum.album.id === nowPlayingDisplayAlbumId);
 
   // ── Playback polling ────────────────────────────────────────────────────────
-  function applyBackendState(state: playbackApi.NowPlayingResponse) {
-    setIsPlaying(state.isPlaying);
+  function applyBackendState(state: playbackApi.NowPlayingResponse | null) {
+    if (!state) return;
+    // In real transport mode, mock isPlaying is stale — poll must not override Sonos-commanded state
+    if (!isRealTransportModeRef.current) {
+      setIsPlaying(state.isPlaying);
+    }
     setProgress(state.progress);
     setTotal(state.totalDuration);
     // Only sync track index from backend for mock albums — Spotify content manages its own index
@@ -310,6 +317,15 @@ export default function App() {
     }
     // Note: state.currentAlbumId is a mock ID — we keep our own nowPlayingDisplayAlbumId
     // so real Spotify album metadata is not overridden by polling
+  }
+
+  // Called after every transport API response. Activates real-mode guard on first null result.
+  function handleTransportResult(result: playbackApi.NowPlayingResponse | null): void {
+    if (result === null) {
+      isRealTransportModeRef.current = true;
+    } else {
+      applyBackendState(result);
+    }
   }
 
   useEffect(() => {
@@ -453,7 +469,7 @@ export default function App() {
     setProgress(0);
     setIsPlaying(true);
     setSearchOpen(false);
-    playbackApi.play().catch(console.error);
+    playbackApi.play().then(handleTransportResult).catch(console.error);
     // Load full album in background for backside/queue
     ensureAlbumDetails(track.albumId);
   }
@@ -525,7 +541,7 @@ export default function App() {
       ensureAlbumDetails(albumId);
       playbackApi.seek(0)
         .then(() => playbackApi.play())
-        .then(applyBackendState)
+        .then(handleTransportResult)
         .catch(console.error);
     }
   };
@@ -547,7 +563,7 @@ export default function App() {
       setCurrentTrackIndex(trackIndex);
       setProgress(0);
       setIsPlaying(true);
-      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
+      playbackApi.seek(0).then(() => playbackApi.play()).then(handleTransportResult).catch(console.error);
     }
   };
 
@@ -582,31 +598,52 @@ export default function App() {
 
   const handlePrevious = () => {
     if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
-      playbackApi.previous().then(applyBackendState).catch(console.error);
+      playbackApi.previous().then(handleTransportResult).catch(console.error);
     } else {
       const album = enrichedAlbumsById[nowPlayingAlbumIdRef.current];
       const count = album?.tracks.length ?? 0;
-      setCurrentTrackIndex((i) => (count > 0 ? (i - 1 + count) % count : i));
+      const savedIndex = currentTrackIndex;
+      const nextIndex = count > 0 ? (savedIndex - 1 + count) % count : savedIndex;
+      setCurrentTrackIndex(nextIndex);
       setProgress(0);
-      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
+      playbackApi.previous()
+        .then(handleTransportResult)
+        .catch((err) => {
+          console.error('[handlePrevious]', err);
+          setCurrentTrackIndex(savedIndex);
+        });
     }
   };
 
   const handleNext = () => {
     if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
-      playbackApi.next().then(applyBackendState).catch(console.error);
+      playbackApi.next().then(handleTransportResult).catch(console.error);
     } else {
       const album = enrichedAlbumsById[nowPlayingAlbumIdRef.current];
       const count = album?.tracks.length ?? 0;
-      setCurrentTrackIndex((i) => (count > 0 ? (i + 1) % count : i));
+      const savedIndex = currentTrackIndex;
+      const nextIndex = count > 0 ? (savedIndex + 1) % count : savedIndex;
+      setCurrentTrackIndex(nextIndex);
       setProgress(0);
-      playbackApi.seek(0).then(() => playbackApi.play()).catch(console.error);
+      playbackApi.next()
+        .then(handleTransportResult)
+        .catch((err) => {
+          console.error('[handleNext]', err);
+          setCurrentTrackIndex(savedIndex);
+        });
     }
   };
 
   const handleTogglePlay = () => {
+    const willPlay = !isPlaying;
+    setIsPlaying(willPlay);
     const action = isPlaying ? playbackApi.pause : playbackApi.play;
-    action().then(applyBackendState).catch(console.error);
+    action()
+      .then(handleTransportResult)
+      .catch((err) => {
+        console.error('[handleTogglePlay]', err);
+        setIsPlaying(!willPlay);
+      });
   };
 
   const handleSeek = (nextSeconds: number) => {
