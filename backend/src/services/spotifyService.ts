@@ -76,7 +76,7 @@ export async function getPlaylist(id: string): Promise<AppAlbum> {
   const data = await spotifyGet<SpotifyPlaylistFull>(
     `/playlists/${id}?market=from_token`,
   );
-  const raw = data as Record<string, unknown>;
+  const raw = data as unknown as Record<string, unknown>;
 
   if (!raw['items'] && !raw['tracks']) {
     // Spotify 2024: /playlists/{id}/items replaced /playlists/{id}/tracks

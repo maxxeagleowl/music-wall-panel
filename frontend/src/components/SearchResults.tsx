@@ -1,10 +1,13 @@
 import { motion } from 'framer-motion';
 import { rgba, themeColors, themeEffects } from '../theme/colors';
-import type { SearchResults as SearchResultsType, Album, Playlist } from '../types/music';
+import type { SearchResults as SearchResultsType, Album, Playlist, SearchTrack } from '../types/music';
 
 type Props = {
   results: SearchResultsType;
   onSelectAlbum?: (album: Album) => void;
+  onSelectTrack?: (track: SearchTrack) => void;
+  onSelectPlaylist?: (playlist: Playlist) => void;
+  onSelectArtist?: (name: string) => void;
 };
 
 function CoverThumb({ url, tag }: { url: string | null | undefined; tag: string }) {
@@ -50,12 +53,14 @@ function ResultRow({
   tag,
   primary,
   secondary,
+  badge,
   onClick,
 }: {
   cover: string | null | undefined;
   tag: string;
   primary: string;
   secondary: string;
+  badge?: string;
   onClick?: () => void;
 }) {
   return (
@@ -67,11 +72,16 @@ function ResultRow({
       style={{
         backgroundColor: 'transparent',
         border: '1px solid transparent',
+        cursor: onClick ? 'pointer' : 'default',
       }}
-      whileHover={{
-        backgroundColor: rgba(themeColors.accent.goldSoft, 0.05),
-        borderColor: rgba(themeColors.accent.goldSoft, 0.08),
-      }}
+      whileHover={
+        onClick
+          ? {
+              backgroundColor: rgba(themeColors.accent.goldSoft, 0.05),
+              borderColor: rgba(themeColors.accent.goldSoft, 0.08),
+            }
+          : {}
+      }
     >
       <CoverThumb url={cover} tag={tag} />
       <div className="min-w-0 flex-1">
@@ -88,11 +98,22 @@ function ResultRow({
           {secondary}
         </p>
       </div>
+      {badge && (
+        <span
+          className="shrink-0 rounded-full px-2 py-0.5 text-[0.58rem] uppercase tracking-[0.14em]"
+          style={{
+            backgroundColor: rgba(themeColors.accent.goldSoft, 0.1),
+            color: themeColors.neutral.text.soft,
+          }}
+        >
+          {badge}
+        </span>
+      )}
     </motion.button>
   );
 }
 
-export function SearchResults({ results, onSelectAlbum }: Props) {
+export function SearchResults({ results, onSelectAlbum, onSelectTrack, onSelectPlaylist, onSelectArtist }: Props) {
   const hasAlbums = results.albums.length > 0;
   const hasTracks = results.tracks.length > 0;
   const hasArtists = results.artists.length > 0;
@@ -141,6 +162,8 @@ export function SearchResults({ results, onSelectAlbum }: Props) {
                 tag={track.title}
                 primary={track.title}
                 secondary={`${track.artist} · ${track.albumTitle}`}
+                badge={track.durationFormatted}
+                onClick={() => onSelectTrack?.(track)}
               />
             ))}
           </div>
@@ -158,6 +181,7 @@ export function SearchResults({ results, onSelectAlbum }: Props) {
                 tag={artist.name}
                 primary={artist.name}
                 secondary="Künstler"
+                onClick={() => onSelectArtist?.(artist.name)}
               />
             ))}
           </div>
@@ -175,6 +199,7 @@ export function SearchResults({ results, onSelectAlbum }: Props) {
                 tag={playlist.name}
                 primary={playlist.name}
                 secondary={`${playlist.trackCount} Tracks · ${playlist.owner}`}
+                onClick={() => onSelectPlaylist?.(playlist)}
               />
             ))}
           </div>

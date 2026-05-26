@@ -1,6 +1,7 @@
 import type {
   SpotifyAlbumSimple,
   SpotifyAlbumFull,
+  SpotifyArtistSimple,
   SpotifyTrackSimple,
   SpotifyPlaylist,
   SpotifyPlaylistFull,
@@ -79,6 +80,7 @@ export interface AppSearchTrack {
   artist: string;
   durationFormatted: string;
   albumTitle: string;
+  albumId: string;
   albumCoverUrl: string | null;
 }
 
@@ -224,19 +226,25 @@ export function mapRecentTrack(item: SpotifyRecentlyPlayedItem): AppRecentTrack 
 }
 
 export function mapSearchResults(raw: SpotifySearchResult): AppSearchResults {
-  const albums = (raw.albums?.items ?? []).map((a) => mapAlbum(a));
-  const tracks = (raw.tracks?.items ?? []).map((t) => ({
-    id: t.id,
-    title: t.name,
-    artist: artistNames(t.artists),
-    durationFormatted: formatMs(t.duration_ms),
-    albumTitle: t.album.name,
-    albumCoverUrl: t.album.images[0]?.url ?? null,
-  }));
-  const artists = (raw.artists?.items ?? []).map((a) => ({
-    id: a.id,
-    name: a.name,
-  }));
-  const playlists = (raw.playlists?.items ?? []).map(mapPlaylist);
+  const albums = (raw.albums?.items ?? [])
+    .filter((a): a is SpotifyAlbumSimple => a != null)
+    .map((a) => mapAlbum(a));
+  const tracks = (raw.tracks?.items ?? [])
+    .filter((t): t is SpotifyTrackSimple & { album: SpotifyAlbumSimple } => t != null)
+    .map((t) => ({
+      id: t.id,
+      title: t.name,
+      artist: artistNames(t.artists),
+      durationFormatted: formatMs(t.duration_ms),
+      albumTitle: t.album.name,
+      albumId: t.album.id,
+      albumCoverUrl: t.album.images[0]?.url ?? null,
+    }));
+  const artists = (raw.artists?.items ?? [])
+    .filter((a): a is SpotifyArtistSimple => a != null)
+    .map((a) => ({ id: a.id, name: a.name }));
+  const playlists = (raw.playlists?.items ?? [])
+    .filter((p): p is SpotifyPlaylist => p != null)
+    .map(mapPlaylist);
   return { albums, tracks, artists, playlists };
 }

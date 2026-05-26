@@ -4,16 +4,18 @@ import { X, Search } from 'lucide-react';
 import { rgba, themeColors, themeEffects } from '../theme/colors';
 import { useSpotifySearch } from '../hooks/useSpotifySearch';
 import { SearchResults } from './SearchResults';
-import type { Album } from '../types/music';
+import type { Album, Playlist, SearchTrack } from '../types/music';
 
 type Props = {
   open: boolean;
   connected: boolean;
   onClose: () => void;
   onSelectAlbum?: (album: Album) => void;
+  onSelectTrack?: (track: SearchTrack) => void;
+  onSelectPlaylist?: (playlist: Playlist) => void;
 };
 
-export function SearchOverlay({ open, connected, onClose, onSelectAlbum }: Props) {
+export function SearchOverlay({ open, connected, onClose, onSelectAlbum, onSelectTrack, onSelectPlaylist }: Props) {
   const { query, setQuery, results, loading, clearSearch } = useSpotifySearch(connected);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -47,6 +49,20 @@ export function SearchOverlay({ open, connected, onClose, onSelectAlbum }: Props
   function handleAlbumSelect(album: Album) {
     onSelectAlbum?.(album);
     handleClose();
+  }
+
+  function handleTrackSelect(track: import('../types/music').SearchTrack) {
+    onSelectTrack?.(track);
+    handleClose();
+  }
+
+  function handlePlaylistSelect(playlist: Playlist) {
+    onSelectPlaylist?.(playlist);
+    handleClose();
+  }
+
+  function handleArtistSelect(name: string) {
+    setQuery(name);
   }
 
   return (
@@ -152,7 +168,13 @@ export function SearchOverlay({ open, connected, onClose, onSelectAlbum }: Props
                   </p>
                 </div>
               ) : (
-                <SearchResults results={results} onSelectAlbum={handleAlbumSelect} />
+                <SearchResults
+                results={results}
+                onSelectAlbum={handleAlbumSelect}
+                onSelectTrack={handleTrackSelect}
+                onSelectPlaylist={handlePlaylistSelect}
+                onSelectArtist={handleArtistSelect}
+              />
               )}
             </div>
           </motion.div>

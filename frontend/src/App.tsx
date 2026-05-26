@@ -6,7 +6,7 @@ import * as sonosApi from './api/sonosApi';
 import { getSpotifyStatus, spotifyLogout, type SpotifyStatus } from './api/spotifyAuthApi';
 import * as spotifyApi from './api/spotifyApi';
 import { useSpotifyLibrary } from './hooks/useSpotifyLibrary';
-import type { Album, Track } from './types/music';
+import type { Album, Track, Playlist, SearchTrack } from './types/music';
 import type { SonosRoom } from './types/sonos';
 import { CoverFlow } from './components/CoverFlow';
 import { NowPlaying } from './components/NowPlaying';
@@ -81,6 +81,8 @@ export default function App() {
   const [spotifyStatus, setSpotifyStatus] = useState<SpotifyStatus>({ connected: false });
   const [enrichedAlbumsById, setEnrichedAlbumsById] = useState<Record<string, Album>>({});
   const [loadingTrackMap, setLoadingTrackMap] = useState<Record<string, boolean>>({});
+  // Temporarily injected album/playlist from search result (not necessarily in saved library)
+  const [searchInjectedAlbum, setSearchInjectedAlbum] = useState<{ album: Album; tab: 'Auswahl' | 'Playlists' } | null>(null);
   const pendingFetches = useRef<Set<string>>(new Set());
 
   // ── Playback state ──────────────────────────────────────────────────────────
@@ -145,30 +147,35 @@ export default function App() {
       return mockAlbums;
     }
 
+    const injected = searchInjectedAlbum;
+
     if (activeNav === 'Playlists') {
-      if (playlists.length > 0) {
-        return playlists.map((p) => {
-          const base: Album = {
-            id: p.id,
-            artist: p.owner || 'Playlist',
-            title: p.name,
-            year: new Date().getFullYear(),
-            genre: `${p.trackCount} Tracks`,
-            mood: p.description,
-            label: '',
-            accent: SPOTIFY_ACCENT,
-            accentSoft: SPOTIFY_ACCENT_SOFT,
-            coverTag: p.name.slice(0, 2).toUpperCase(),
-            coverPattern: SPOTIFY_COVER_PATTERN,
-            coverText: p.name.slice(0, 2).toUpperCase(),
-            coverUrl: p.coverUrl,
-            tracks: [],
-          };
-          return enrichedAlbumsById[p.id] ?? base;
-        });
+      const base: Album[] = playlists.length > 0
+        ? playlists.map((p) => {
+            const baseAlbum: Album = {
+              id: p.id,
+              artist: p.owner || 'Playlist',
+              title: p.name,
+              year: new Date().getFullYear(),
+              genre: `${p.trackCount} Tracks`,
+              mood: p.description,
+              label: '',
+              accent: SPOTIFY_ACCENT,
+              accentSoft: SPOTIFY_ACCENT_SOFT,
+              coverTag: p.name.slice(0, 2).toUpperCase(),
+              coverPattern: SPOTIFY_COVER_PATTERN,
+              coverText: p.name.slice(0, 2).toUpperCase(),
+              coverUrl: p.coverUrl,
+              tracks: [],
+            };
+            return enrichedAlbumsById[p.id] ?? baseAlbum;
+          })
+        : [EMPTY_PLAYLISTS];
+      // Prepend injected playlist if not already in list
+      if (injected?.tab === 'Playlists' && !base.some((a) => a.id === injected.album.id)) {
+        return [enrichedAlbumsById[injected.album.id] ?? injected.album, ...base];
       }
-      // Connected but no playlists — show clear empty state, not mocks
-      return [EMPTY_PLAYLISTS];
+      return base;
     }
 
     if (activeNav === 'Zuletzt') {
@@ -234,11 +241,16 @@ export default function App() {
 
     // 'Auswahl' — saved library
     if (spotifyAlbums.length > 0) {
-      return spotifyAlbums.map((a) => enrichedAlbumsById[a.id] ?? a);
+      const base = spotifyAlbums.map((a) => enrichedAlbumsById[a.id] ?? a);
+      // Prepend injected album from search if not in saved library
+      if (injected?.tab === 'Auswahl' && !base.some((a) => a.id === injected.album.id)) {
+        return [enrichedAlbumsById[injected.album.id] ?? injected.album, ...base];
+      }
+      return base;
     }
     // Connected but no saved albums — fall back to mocks so the UI is never empty
     return mockAlbums;
-  }, [activeNav, spotifyStatus.connected, spotifyLibrary, enrichedAlbumsById]);
+  }, [activeNav, spotifyStatus.connected, spotifyLibrary, enrichedAlbumsById, searchInjectedAlbum]);
 
   // Reset selection when switching to a list that doesn't contain the current selection
   const prevDisplayRef = useRef(displayAlbums);
@@ -371,17 +383,77 @@ export default function App() {
   }
 
   function handleSearchAlbumSelect(album: Album) {
-    // If the found album is not in the current displayAlbums list, switch to Auswahl
-    if (!displayAlbums.some((a) => a.id === album.id)) {
-      setActiveNav('Auswahl');
-    }
+    // Inject into Auswahl tab (even if not in saved library)
+    setSearchInjectedAlbum({ album, tab: 'Auswahl' });
+    setActiveNav('Auswahl');
     setSelectedAlbumId(album.id);
     setFlippedAlbumId(null);
     setSearchOpen(false);
-    // Pre-fetch details so backside is ready immediately on flip
     if (!mockAlbums.some((a) => a.id === album.id)) {
       ensureAlbumDetails(album.id);
     }
+  }
+
+  function handleSearchTrackSelect(track: SearchTrack) {
+    // Build a minimal album stub so NowPlaying shows the right track immediately
+    const stub: Album = {
+      id: track.albumId,
+      artist: track.artist,
+      title: track.albumTitle,
+      year: new Date().getFullYear(),
+      genre: '',
+      mood: '',
+      label: '',
+      accent: SPOTIFY_ACCENT,
+      accentSoft: SPOTIFY_ACCENT_SOFT,
+      coverTag: track.albumTitle.slice(0, 2).toUpperCase(),
+      coverPattern: SPOTIFY_COVER_PATTERN,
+      coverText: track.albumTitle.slice(0, 2).toUpperCase(),
+      coverUrl: track.albumCoverUrl,
+      tracks: [{
+        id: track.id,
+        number: 1,
+        title: track.title,
+        duration: track.durationFormatted,
+        artist: track.artist,
+        albumTitle: track.albumTitle,
+        albumCoverUrl: track.albumCoverUrl,
+      }],
+    };
+    setEnrichedAlbumsById((prev) => ({ ...prev, [track.albumId]: stub }));
+    setNowPlayingAlbum(track.albumId);
+    setCurrentTrackIndex(0);
+    setProgress(0);
+    setIsPlaying(true);
+    setSearchOpen(false);
+    playbackApi.play().catch(console.error);
+    // Load full album in background for backside/queue
+    ensureAlbumDetails(track.albumId);
+  }
+
+  function handleSearchPlaylistSelect(playlist: Playlist) {
+    const albumShape: Album = {
+      id: playlist.id,
+      artist: playlist.owner || 'Playlist',
+      title: playlist.name,
+      year: new Date().getFullYear(),
+      genre: `${playlist.trackCount} Tracks`,
+      mood: playlist.description,
+      label: '',
+      accent: SPOTIFY_ACCENT,
+      accentSoft: SPOTIFY_ACCENT_SOFT,
+      coverTag: playlist.name.slice(0, 2).toUpperCase(),
+      coverPattern: SPOTIFY_COVER_PATTERN,
+      coverText: playlist.name.slice(0, 2).toUpperCase(),
+      coverUrl: playlist.coverUrl,
+      tracks: [],
+    };
+    setSearchInjectedAlbum({ album: albumShape, tab: 'Playlists' });
+    setActiveNav('Playlists');
+    setSelectedAlbumId(playlist.id);
+    setFlippedAlbumId(null);
+    setSearchOpen(false);
+    ensureAlbumDetails(playlist.id);
   }
 
   // ── CoverFlow handlers ──────────────────────────────────────────────────────
@@ -643,6 +715,8 @@ export default function App() {
           connected={spotifyStatus.connected}
           onClose={handleSearchClose}
           onSelectAlbum={handleSearchAlbumSelect}
+          onSelectTrack={handleSearchTrackSelect}
+          onSelectPlaylist={handleSearchPlaylistSelect}
         />
 
         {/* ── Queue toast ── */}

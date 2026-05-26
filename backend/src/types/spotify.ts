@@ -94,10 +94,10 @@ export interface SpotifyRecentlyPlayedItem {
 }
 
 export interface SpotifySearchResult {
-  albums?: { items: SpotifyAlbumSimple[]; total: number };
-  tracks?: { items: Array<SpotifyTrackSimple & { album: SpotifyAlbumSimple }>; total: number };
-  artists?: { items: SpotifyArtistSimple[]; total: number };
-  playlists?: { items: SpotifyPlaylist[]; total: number };
+  albums?: { items: (SpotifyAlbumSimple | null)[]; total: number };
+  tracks?: { items: Array<(SpotifyTrackSimple & { album: SpotifyAlbumSimple }) | null>; total: number };
+  artists?: { items: (SpotifyArtistSimple | null)[]; total: number };
+  playlists?: { items: (SpotifyPlaylist | null)[]; total: number };
 }
 
 export interface SpotifySavedAlbum {

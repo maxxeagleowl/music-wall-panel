@@ -67,6 +67,7 @@ export type SearchTrack = {
   artist: string;
   durationFormatted: string;
   albumTitle: string;
+  albumId: string;
   albumCoverUrl: string | null;
 };
 
