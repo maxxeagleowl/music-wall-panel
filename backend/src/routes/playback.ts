@@ -286,10 +286,20 @@ router.post('/play-track', (req, res) => {
   res.json(playbackService.playTrack(albumId, trackIndex));
 });
 
-router.post('/seek', (req, res) => {
+router.post('/seek', async (req, res) => {
   const { position } = req.body as { position?: number };
   if (position === undefined) {
     res.status(400).json({ error: 'position required' });
+    return;
+  }
+  if (isRealMode()) {
+    try {
+      await sonosService.seekPosition(position);
+      res.json({ ok: true, mode: 'real', action: 'seek', position });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'seek', error });
+    }
     return;
   }
   res.json(playbackService.seek(position));

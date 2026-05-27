@@ -539,6 +539,15 @@ export class SonosRealAdapter implements SonosAdapter {
       `<u:Seek xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID><Unit>TRACK_NR</Unit><Target>${trackNr}</Target></u:Seek>`);
   }
 
+  async seekPosition(seconds: number): Promise<void> {
+    const s = Math.max(0, Math.floor(seconds));
+    const hh = String(Math.floor(s / 3600)).padStart(2, '0');
+    const mm = String(Math.floor((s % 3600) / 60)).padStart(2, '0');
+    const ss = String(s % 60).padStart(2, '0');
+    await this.avTransport('Seek',
+      `<u:Seek xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID><Unit>REL_TIME</Unit><Target>${hh}:${mm}:${ss}</Target></u:Seek>`);
+  }
+
   // ── Position info via AVTransport GetPositionInfo ──────────────────────────
 
   async getPositionInfo(): Promise<SonosPositionInfo> {

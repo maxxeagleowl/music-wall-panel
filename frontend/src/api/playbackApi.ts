@@ -36,8 +36,8 @@ function isRealModeResponse(r: NowPlayingResponse | RealModeResponse): r is Real
   return 'ok' in r;
 }
 
-async function transport(path: string): Promise<NowPlayingResponse | null> {
-  const raw = await post<NowPlayingResponse | RealModeResponse>(path);
+async function transport(path: string, body?: Record<string, unknown>): Promise<NowPlayingResponse | null> {
+  const raw = await post<NowPlayingResponse | RealModeResponse>(path, body);
   return isRealModeResponse(raw) ? null : raw;
 }
 
@@ -50,8 +50,7 @@ export const playAlbum     = (albumId: string) =>
   post<NowPlayingResponse>('/api/play-album', { albumId });
 export const playTrack     = (albumId: string, trackIndex: number) =>
   post<NowPlayingResponse>('/api/play-track', { albumId, trackIndex });
-export const seek          = (position: number) =>
-  post<NowPlayingResponse>('/api/seek', { position });
+export const seek = (position: number) => transport('/api/seek', { position });
 
 export async function playQueueItem(trackIndex: number, albumId?: string): Promise<NowPlayingResponse | null> {
   const raw = await post<NowPlayingResponse | RealModeResponse>('/api/queue/play-index', { trackIndex, albumId });

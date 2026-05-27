@@ -11,3 +11,5 @@
 - Queue nicht mehr anklcikbar 
 - Playlistname
 - Bug: Queue läuft via Spotify, dann keine im UI
+
+Phase 15: offset standard Group rooms Master volume

@@ -59,6 +59,10 @@ export function seekToTrackNr(trackNr: number): Promise<void> {
   return getSonosAdapter().seekToTrackNr(trackNr);
 }
 
+export function seekPosition(seconds: number): Promise<void> {
+  return getSonosAdapter().seekPosition(seconds);
+}
+
 export function getTransportInfo(): Promise<{ isPlaying: boolean }> {
   return getSonosAdapter().getTransportInfo();
 }

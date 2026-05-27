@@ -98,6 +98,8 @@ export default function App() {
   // Set to true when any transport command (play/pause/next/prev) gets a real-mode null response.
   // Prevents mock polling from overwriting isPlaying after a real Sonos command.
   const isRealTransportModeRef = useRef(false);
+  // Anchor for smooth Sonos progress interpolation: last polled position + timestamp.
+  const sonosProgressRef = useRef<{ seconds: number; timestamp: number; isPlaying: boolean } | null>(null);
 
   // ── Playback state ──────────────────────────────────────────────────────────
   // Backend is the authority for timing; these are render copies kept in sync by polling.
@@ -331,6 +333,11 @@ export default function App() {
       isRealTransportModeRef.current = true;
       setSonosCurrentTrack(state.current);
       setIsPlaying(state.isPlaying);
+      sonosProgressRef.current = {
+        seconds: state.progress,
+        timestamp: performance.now(),
+        isPlaying: state.isPlaying,
+      };
     } else if (!isRealTransportModeRef.current) {
       setIsPlaying(state.isPlaying);
     }
@@ -365,6 +372,17 @@ export default function App() {
     const id = window.setInterval(sync, 1000);
     return () => window.clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Smooth Sonos progress interpolation between 1s backend polls.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      const anchor = sonosProgressRef.current;
+      if (!anchor || !anchor.isPlaying) return;
+      const elapsed = (performance.now() - anchor.timestamp) / 1000;
+      setProgress(anchor.seconds + elapsed);
+    }, 100);
+    return () => window.clearInterval(id);
   }, []);
 
   // Sync progress bar total to Spotify track duration for mock Sonos mode only.
@@ -743,6 +761,17 @@ export default function App() {
   };
 
   const handleSeek = (nextSeconds: number) => {
+    if (isRealTransportModeRef.current) {
+      // Optimistically move anchor so bar snaps immediately, then Sonos confirms on next poll.
+      if (sonosProgressRef.current) {
+        sonosProgressRef.current = {
+          ...sonosProgressRef.current,
+          seconds: nextSeconds,
+          timestamp: performance.now(),
+        };
+      }
+      setProgress(nextSeconds);
+    }
     playbackApi.seek(nextSeconds).then(applyBackendState).catch(console.error);
   };
 
