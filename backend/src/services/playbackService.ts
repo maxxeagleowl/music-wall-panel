@@ -14,7 +14,9 @@ export interface CurrentTrack {
   uri: string;
   contextType: 'playlist' | 'album' | 'track' | 'unknown';
   contextId: string;
-  contextTitle: string;
+  contextTitle: string;      // resolved human-readable context/playlist name
+  playlistName?: string;     // alias — may be populated by route layer
+  contextName?: string;      // alias — may be populated by route layer
   source: 'sonos' | 'mock';
 }
 

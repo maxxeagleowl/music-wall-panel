@@ -138,6 +138,23 @@ export async function getDevices(): Promise<AppDevice[]> {
   return data.devices.map(mapDevice);
 }
 
+/** Returns just the display name of a Spotify playlist by ID. */
+export async function getPlaylistName(id: string): Promise<string> {
+  const data = await spotifyGet<{ name: string }>(`/playlists/${id}?fields=name`);
+  return data.name ?? '';
+}
+
+/** Returns just the display name of a Spotify album by ID. */
+export async function getAlbumName(id: string): Promise<string> {
+  const data = await spotifyGet<{ name: string }>(`/albums/${id}?fields=name`);
+  return data.name ?? '';
+}
+
+/** Returns the display name of any Spotify context (playlist or album) by ID and type. */
+export async function getContextName(id: string, type: 'playlist' | 'album'): Promise<string> {
+  return type === 'album' ? getAlbumName(id) : getPlaylistName(id);
+}
+
 /** Returns the current Spotify playback context (playlist/album URI + type), or null. */
 export async function getCurrentPlaybackContext(): Promise<{
   type: string;
@@ -150,4 +167,72 @@ export async function getCurrentPlaybackContext(): Promise<{
   } | null>('/me/player?additional_types=track');
   if (!data?.context) return null;
   return { ...data.context, trackId: data.item?.id ?? null };
+}
+
+export interface SpotifyPlayerContext {
+  httpStatus: number;
+  trackId: string | null;
+  contextUri: string | null;
+  contextType: string | null;
+  deviceName: string | null;
+  deviceId: string | null;
+  deviceIsActive: boolean;
+  errorBody?: string;
+}
+
+/**
+ * Full Spotify /me/player response with HTTP status and device info.
+ * 204 (no active player), 401 (token invalid), 403 (missing scope) are returned
+ * in the result object instead of throwing — the caller decides how to react.
+ * Rate-limit (429) and other network errors still throw.
+ */
+export async function getPlayerContext(): Promise<SpotifyPlayerContext> {
+  const token = await getValidAccessToken();
+  const res = await fetch(`${API}/me/player?additional_types=track`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (res.status === 204) {
+    return {
+      httpStatus: 204,
+      trackId: null, contextUri: null, contextType: null,
+      deviceName: null, deviceId: null, deviceIsActive: false,
+    };
+  }
+
+  if (res.status === 401 || res.status === 403) {
+    const errorBody = await res.text().catch(() => '');
+    return {
+      httpStatus: res.status,
+      trackId: null, contextUri: null, contextType: null,
+      deviceName: null, deviceId: null, deviceIsActive: false,
+      errorBody,
+    };
+  }
+
+  if (res.status === 429) {
+    const retryAfter = res.headers.get('Retry-After') ?? '1';
+    throw new Error(`Spotify rate limit — retry after ${retryAfter}s`);
+  }
+
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    throw new Error(`Spotify API ${res.status} for /me/player: ${body}`);
+  }
+
+  const data = await res.json() as {
+    context: { type: string; uri: string } | null;
+    item: { id: string } | null;
+    device: { id: string; name: string; is_active: boolean } | null;
+  };
+
+  return {
+    httpStatus: res.status,
+    trackId: data.item?.id ?? null,
+    contextUri: data.context?.uri ?? null,
+    contextType: data.context?.type ?? null,
+    deviceName: data.device?.name ?? null,
+    deviceId: data.device?.id ?? null,
+    deviceIsActive: data.device?.is_active ?? false,
+  };
 }

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import * as spotifyAuthService from '../services/spotifyAuthService';
 import * as spotifyService from '../services/spotifyService';
+import { hasSession, isSessionValid, getSession } from '../state/spotifySession';
 
 const router = Router();
 
@@ -112,6 +113,92 @@ router.get('/search', async (req: Request, res: Response) => {
 router.get('/devices', async (_req: Request, res: Response) => {
   if (!requireAuth(res)) return;
   await handle(res, () => spotifyService.getDevices(), []);
+});
+
+// ── Debug ─────────────────────────────────────────────────────────────────────
+
+const SPOTIFY_API = 'https://api.spotify.com/v1';
+const REQUIRED_SCOPES = [
+  'user-read-playback-state',
+  'user-read-currently-playing',
+  'playlist-read-private',
+  'playlist-read-collaborative',
+  'user-library-read',
+];
+
+async function probeSpotifyEndpoint(
+  token: string,
+  path: string,
+): Promise<{ status: number; body: unknown }> {
+  try {
+    const r = await fetch(`${SPOTIFY_API}${path}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (r.status === 204) return { status: 204, body: null };
+    const text = await r.text();
+    let body: unknown;
+    try { body = JSON.parse(text); } catch { body = text || null; }
+    return { status: r.status, body };
+  } catch (err) {
+    return { status: -1, body: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+/**
+ * GET /api/spotify/debug
+ * Returns a full diagnostic snapshot of the Spotify session and player state.
+ * Use this to diagnose why context resolution fails.
+ */
+router.get('/debug', async (_req: Request, res: Response) => {
+  const sessionExists  = hasSession();
+  const sessionValid   = isSessionValid();
+  const session        = getSession();
+
+  const auth = {
+    connected:           sessionExists,
+    tokenAvailable:      sessionExists,
+    tokenExpired:        sessionExists && !sessionValid,
+    expiresAt:           session ? new Date(session.expiresAt).toISOString() : null,
+    expiresInSeconds:    session ? Math.round((session.expiresAt - Date.now()) / 1000) : null,
+    refreshTokenPresent: session ? Boolean(session.refreshToken) : false,
+    user:                session?.user?.displayName ?? null,
+    requiredScopes:      REQUIRED_SCOPES,
+    note:                'Scopes are granted at login — if any are missing, logout and re-login at /api/auth/spotify/login',
+  };
+
+  if (!sessionExists) {
+    return res.json({ auth, refreshAttempt: null, player: null, currentlyPlaying: null });
+  }
+
+  // ── Token: attempt to get a valid token (refreshes if expired) ───────────────
+  let token: string | null = null;
+  let refreshAttempt: { attempted: boolean; success: boolean; error: string | null } | null = null;
+
+  if (!sessionValid) {
+    refreshAttempt = { attempted: true, success: false, error: null };
+    try {
+      await spotifyAuthService.forceRefreshToken();
+      token = getSession()?.accessToken ?? null;
+      refreshAttempt.success = token !== null;
+    } catch (err) {
+      refreshAttempt.error = err instanceof Error ? err.message : String(err);
+    }
+  } else {
+    refreshAttempt = { attempted: false, success: false, error: null };
+    token = session?.accessToken ?? null;
+  }
+
+  if (!token) {
+    return res.json({ auth, refreshAttempt, player: null, currentlyPlaying: null });
+  }
+
+  // ── Live API probes ──────────────────────────────────────────────────────────
+  const [player, currentlyPlaying] = await Promise.all([
+    probeSpotifyEndpoint(token, '/me/player?additional_types=track'),
+    probeSpotifyEndpoint(token, '/me/player/currently-playing?additional_types=track'),
+  ]);
+
+  return res.json({ auth, refreshAttempt, player, currentlyPlaying });
 });
 
 export default router;

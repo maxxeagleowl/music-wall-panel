@@ -170,6 +170,12 @@ export async function getValidAccessToken(): Promise<string> {
   return session.accessToken;
 }
 
+/** Force a token refresh regardless of current expiry. Used to recover from Spotify 401. */
+export async function forceRefreshToken(): Promise<void> {
+  if (!hasSession()) throw new Error('No session to refresh');
+  await doRefresh();
+}
+
 export function logout(): void {
   clearSession();
 }

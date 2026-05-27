@@ -320,16 +320,48 @@ export default function App() {
   const nowPlayingAlbum = getDisplayedAlbumById(nowPlayingDisplayAlbumId);
   const currentTrack = getSafeTrack(nowPlayingAlbum, currentTrackIndex);
   const highlighted = isDraggingAlbum;
-  const isNowPlayingPlaylist =
-    sonosCurrentTrack?.contextType === 'playlist' ||
-    (sonosCurrentTrack?.source === 'sonos' && !!sonosCurrentTrack.contextTitle) ||
-    spotifyLibrary.playlists.some((p) => p.id === nowPlayingDisplayAlbumId) ||
-    (searchInjectedAlbum?.tab === 'Playlists' && searchInjectedAlbum.album.id === nowPlayingDisplayAlbumId);
+  // TEMP debug — remove after confirming label works
+  console.log('[NowPlaying Debug]', {
+    sonosCurrentTrack: sonosCurrentTrack
+      ? {
+          source: sonosCurrentTrack.source,
+          contextType: sonosCurrentTrack.contextType,
+          contextId: sonosCurrentTrack.contextId,
+          contextTitle: sonosCurrentTrack.contextTitle,
+          playlistName: sonosCurrentTrack.playlistName,
+          contextName: sonosCurrentTrack.contextName,
+        }
+      : null,
+    nowPlayingDisplayAlbumId,
+    albumTitle: nowPlayingAlbum.title,
+  });
+
+  // In real Sonos mode: show context label when backend provides a resolved context name.
+  // Never fall back to nowPlayingDisplayAlbumId checks — those can be stale after context changes.
+  const hasValidSonosContextLabel = Boolean(
+    sonosCurrentTrack?.contextTitle ||
+    sonosCurrentTrack?.playlistName ||
+    sonosCurrentTrack?.contextName,
+  );
+
+  const isNowPlayingPlaylist = sonosCurrentTrack?.source === 'sonos'
+    ? hasValidSonosContextLabel
+    : (spotifyLibrary.playlists.some((p) => p.id === nowPlayingDisplayAlbumId) ||
+       (searchInjectedAlbum?.tab === 'Playlists' && searchInjectedAlbum.album.id === nowPlayingDisplayAlbumId));
 
   // ── Playback polling ────────────────────────────────────────────────────────
   function applyBackendState(state: playbackApi.NowPlayingResponse | null) {
     if (!state) return;
     if (state.current?.source === 'sonos') {
+      // TEMP BOUNDARY 3 — remove after confirming contextTitle reaches sonosCurrentTrack
+      console.log('[BOUNDARY 3] applyBackendState setting sonosCurrentTrack:', JSON.stringify({
+        source:       state.current.source,
+        contextType:  state.current.contextType,
+        contextId:    state.current.contextId,
+        contextTitle: state.current.contextTitle,
+        playlistName: state.current.playlistName,
+        contextName:  state.current.contextName,
+      }));
       isRealTransportModeRef.current = true;
       setSonosCurrentTrack(state.current);
       setIsPlaying(state.isPlaying);

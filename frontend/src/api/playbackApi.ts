@@ -13,7 +13,9 @@ export interface CurrentTrack {
   uri: string;
   contextType: 'playlist' | 'album' | 'track' | 'unknown';
   contextId: string;
-  contextTitle: string;
+  contextTitle: string;   // resolved human-readable context/playlist name
+  playlistName?: string;  // alias field
+  contextName?: string;   // alias field
   source: 'sonos' | 'mock';
 }
 
@@ -41,7 +43,19 @@ async function transport(path: string, body?: Record<string, unknown>): Promise<
   return isRealModeResponse(raw) ? null : raw;
 }
 
-export const getNowPlaying = () => get<NowPlayingResponse>('/api/now-playing');
+export async function getNowPlaying(): Promise<NowPlayingResponse> {
+  const result = await get<NowPlayingResponse>('/api/now-playing');
+  // TEMP BOUNDARY 2 — remove after confirming contextTitle reaches frontend
+  console.log('[BOUNDARY 2] getNowPlaying raw current:', JSON.stringify({
+    source:       result.current?.source       ?? '(null)',
+    contextType:  result.current?.contextType  ?? '(null)',
+    contextId:    result.current?.contextId    ?? '(null)',
+    contextTitle: result.current?.contextTitle ?? '(null)',
+    playlistName: result.current?.playlistName ?? '(null)',
+    contextName:  result.current?.contextName  ?? '(null)',
+  }));
+  return result;
+}
 export const play          = () => transport('/api/play');
 export const pause         = () => transport('/api/pause');
 export const next          = () => transport('/api/next');

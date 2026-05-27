@@ -14,7 +14,9 @@ type CurrentOverride = {
   coverUrl: string | null;
   source: 'sonos' | 'mock';
   contextType?: string;
-  contextTitle?: string;
+  contextTitle?: string;   // resolved human-readable context name from backend
+  playlistName?: string;   // alias field
+  contextName?: string;    // alias field
 };
 
 type NowPlayingProps = {
@@ -75,9 +77,28 @@ export function NowPlaying({
     : (track.artist ?? album.artist);
   const displayAlbum    = isSonos ? currentOverride!.album  : (track.albumTitle ?? album.title);
   const displayCoverUrl = isSonos ? currentOverride!.coverUrl : (track.albumCoverUrl ?? album.coverUrl);
-  const displayPlaylistName = isSonos && currentOverride!.contextTitle
-    ? currentOverride!.contextTitle
+  // Render context label only when backend provides a real resolved name.
+  // Never fall back to stale album.title in Sonos mode.
+  const hasValidContextLabel =
+    Boolean(currentOverride?.contextTitle) ||
+    Boolean(currentOverride?.playlistName) ||
+    Boolean(currentOverride?.contextName);
+
+  const displayPlaylistName: string | null = isSonos
+    ? (currentOverride?.contextTitle ?? currentOverride?.playlistName ?? currentOverride?.contextName ?? null)
     : album.title;
+
+  // TEMP BOUNDARY 4 — remove after confirming label renders
+  console.log('[BOUNDARY 4] NowPlaying render:', {
+    isSonos,
+    contextType:         currentOverride?.contextType  ?? '(null)',
+    contextTitle:        currentOverride?.contextTitle ?? '(null)',
+    playlistName:        currentOverride?.playlistName ?? '(null)',
+    hasValidContextLabel,
+    isPlaylist,
+    albumTitle:          album.title,
+    displayPlaylistName: displayPlaylistName ?? '(null)',
+  });
 
   return (
     <section
@@ -104,7 +125,7 @@ export function NowPlaying({
         {/* Zone 1 — Metadata */}
         <div className="flex items-center pl-3">
           <div className="max-w-[20ch] overflow-hidden">
-            {isPlaylist && (
+            {(isSonos ? hasValidContextLabel : isPlaylist) && displayPlaylistName && (
               <p
                 className="mb-4 truncate text-[0.56rem] uppercase tracking-[0.34em]"
                 style={{ color: themeColors.neutral.text.faint }}
