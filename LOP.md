@@ -9,3 +9,5 @@
 
 - Progressbar back to sonos verändern
 - Queue nicht mehr anklcikbar 
+- Playlistname
+- Bug: Queue läuft via Spotify, dann keine im UI

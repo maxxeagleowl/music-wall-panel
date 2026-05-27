@@ -63,6 +63,7 @@ export interface SonosAdapter {
   next(): Promise<void>;
   previous(): Promise<void>;
   getDiagnostics(): SonosDiagnostics;
+  seekToTrackNr(trackNr: number): Promise<void>;
   getQueue(): Promise<SonosQueueItem[]>;
   getPositionInfo(): Promise<SonosPositionInfo>;
   getMediaInfo(): Promise<SonosMediaContext>;

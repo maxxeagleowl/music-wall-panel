@@ -297,6 +297,37 @@ router.post('/seek', (req, res) => {
 
 // ── Queue endpoints ───────────────────────────────────────────────────────────
 
+// Play a specific item in the Sonos queue by its 0-based trackIndex.
+// In real mode: AVTransport Seek TRACK_NR (1-based) + Play.
+// In mock mode: delegates to playTrack using the albumId/trackIndex from the request body.
+router.post('/queue/play-index', async (req, res) => {
+  const { trackIndex, albumId } = req.body as { trackIndex?: number; albumId?: string };
+  if (trackIndex === undefined) {
+    res.status(400).json({ error: 'trackIndex required' });
+    return;
+  }
+
+  if (isRealMode()) {
+    try {
+      // Sonos queue is 1-based; trackIndex from the frontend is 0-based (full queue position)
+      await sonosService.seekToTrackNr(trackIndex + 1);
+      await sonosService.play();
+      res.json({ ok: true, mode: 'real', action: 'play-index', trackNr: trackIndex + 1 });
+    } catch (err) {
+      const error = err instanceof Error ? err.message : String(err);
+      res.status(500).json({ ok: false, mode: 'real', action: 'play-index', error });
+    }
+    return;
+  }
+
+  // Mock mode: use albumId + trackIndex to play the right track
+  if (!albumId) {
+    res.status(400).json({ error: 'albumId required in mock mode' });
+    return;
+  }
+  res.json(playbackService.playTrack(albumId, trackIndex));
+});
+
 router.get('/queue', async (_req, res) => {
   if (isRealMode()) {
     try {

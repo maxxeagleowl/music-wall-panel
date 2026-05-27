@@ -55,6 +55,10 @@ export function getMediaInfo(): Promise<SonosMediaContext> {
   return getSonosAdapter().getMediaInfo();
 }
 
+export function seekToTrackNr(trackNr: number): Promise<void> {
+  return getSonosAdapter().seekToTrackNr(trackNr);
+}
+
 export function getTransportInfo(): Promise<{ isPlaying: boolean }> {
   return getSonosAdapter().getTransportInfo();
 }

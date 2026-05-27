@@ -45,6 +45,7 @@ export class SonosMockAdapter implements SonosAdapter {
   async pause(): Promise<void> { /* mock — no-op */ }
   async next(): Promise<void> { /* mock — no-op */ }
   async previous(): Promise<void> { /* mock — no-op */ }
+  async seekToTrackNr(_trackNr: number): Promise<void> { /* mock — no-op */ }
 
   async getQueue(): Promise<SonosQueueItem[]> {
     // Mock queue comes from mockState — real queue read handled by playbackService

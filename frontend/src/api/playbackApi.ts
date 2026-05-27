@@ -53,6 +53,11 @@ export const playTrack     = (albumId: string, trackIndex: number) =>
 export const seek          = (position: number) =>
   post<NowPlayingResponse>('/api/seek', { position });
 
+export async function playQueueItem(trackIndex: number, albumId?: string): Promise<NowPlayingResponse | null> {
+  const raw = await post<NowPlayingResponse | RealModeResponse>('/api/queue/play-index', { trackIndex, albumId });
+  return isRealModeResponse(raw) ? null : raw;
+}
+
 // ── Queue API ─────────────────────────────────────────────────────────────────
 
 export const getQueue = () => get<QueueResponse>('/api/queue');

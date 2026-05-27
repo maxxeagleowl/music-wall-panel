@@ -649,17 +649,21 @@ export default function App() {
   // Called when user taps a queue item in NowPlaying
   const handleQueueItemSelect = (item: QueueItem) => {
     const isMock = mockAlbums.some((a) => a.id === item.albumId);
-    setNowPlayingAlbum(item.albumId);
 
-    if (isMock) {
+    if (isRealTransportModeRef.current) {
+      // Sonos real mode: seek to the track's 0-based queue index via AVTransport TRACK_NR
+      playbackApi.playQueueItem(item.trackIndex).then(handleTransportResult).catch(console.error);
+    } else if (isMock) {
+      setNowPlayingAlbum(item.albumId);
       playbackApi.playTrack(item.albumId, item.trackIndex).then(applyBackendState).catch(console.error);
     } else {
+      setNowPlayingAlbum(item.albumId);
       const album = getDisplayedAlbumById(item.albumId);
       const trackIndex = album.tracks.findIndex((t) => t.id === item.trackId);
       setCurrentTrackIndex(trackIndex >= 0 ? trackIndex : 0);
       setProgress(0);
       setIsPlaying(true);
-      playbackApi.seek(0).then(() => playbackApi.play()).then(handleTransportResult).catch(console.error);
+      playbackApi.playQueueItem(item.trackIndex, item.albumId).then(handleTransportResult).catch(console.error);
     }
   };
 
