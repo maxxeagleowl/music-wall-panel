@@ -16,7 +16,8 @@ type AlbumCardProps = {
   onSwipeNext: () => void;
   onDropToNowPlaying: () => void;
   onPlayTrack: (track: Track) => void;
-  onQueueTrack: (track: Track) => void;
+  onQueueNext: (track: Track) => void;
+  onQueueAppend: (track: Track) => void;
   onShowTrackDetails: (track: Track) => void;
   onDragStateChange: (dragging: boolean) => void;
 };
@@ -92,7 +93,8 @@ export function AlbumCard({
   onSwipeNext,
   onDropToNowPlaying,
   onPlayTrack,
-  onQueueTrack,
+  onQueueNext,
+  onQueueAppend,
   onShowTrackDetails,
   onDragStateChange
 }: AlbumCardProps) {
@@ -375,7 +377,8 @@ export function AlbumCard({
             tracksLoading={tracksLoading}
             onFlipBack={onFlip}
             onPlayTrack={onPlayTrack}
-            onQueueTrack={onQueueTrack}
+            onQueueNext={onQueueNext}
+            onQueueAppend={onQueueAppend}
             onShowTrackDetails={onShowTrackDetails}
           />
         </div>

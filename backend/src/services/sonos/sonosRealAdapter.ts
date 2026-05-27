@@ -9,7 +9,7 @@
 
 import * as dgram from 'dgram';
 import * as http from 'http';
-import type { SonosAdapter, SonosDiagnostics, SonosRoom, DiscoveredDevice } from './sonosTypes';
+import type { SonosAdapter, SonosDiagnostics, SonosRoom, SonosQueueItem, SonosPositionInfo, SonosMediaContext, DiscoveredDevice } from './sonosTypes';
 
 // ── Room name normalization ──────────────────────────────────────────────────
 
@@ -21,14 +21,27 @@ function nameToId(name: string): string {
 
 // ── Native UPnP helpers ──────────────────────────────────────────────────────
 
-const RENDERING_CONTROL = 'urn:schemas-upnp-org:service:RenderingControl:1';
+const CONTENT_DIRECTORY  = 'urn:schemas-upnp-org:service:ContentDirectory:1';
+const CONTENT_DIR_PATH   = '/MediaServer/ContentDirectory/Control';
+const RENDERING_CONTROL  = 'urn:schemas-upnp-org:service:RenderingControl:1';
 const RENDERING_PATH    = '/MediaRenderer/RenderingControl/Control';
 const AV_TRANSPORT      = 'urn:schemas-upnp-org:service:AVTransport:1';
 const AV_PATH           = '/MediaRenderer/AVTransport/Control';
 
+function decodeXmlEntities(s: string): string {
+  return s
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'");
+}
+
+// Matches <tag> or <tag attr="..."> — handles namespace tags like dc:title, upnp:artist
 function extractXmlValue(xml: string, tag: string): string {
-  const match = xml.match(new RegExp(`<${tag}>([^<]*)</${tag}>`));
-  return match?.[1] ?? '';
+  const escapedTag = tag.replace(/:/g, '\\:');
+  const match = xml.match(new RegExp(`<${escapedTag}(?:\\s[^>]*)?>([^<]*)<\\/${escapedTag}>`));
+  return match ? decodeXmlEntities(match[1]!) : '';
 }
 
 function httpGet(url: string, timeoutMs: number): Promise<string> {
@@ -193,6 +206,84 @@ async function fetchDeviceInfo(
   }
 }
 
+// ── DIDL-Lite queue parsing ──────────────────────────────────────────────────
+
+function formatDuration(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function parseTimeSeconds(duration: string): number {
+  // Format: "H:MM:SS.mmm" → seconds
+  const [hms] = duration.split('.');
+  const parts = (hms ?? '').split(':').map(Number);
+  if (parts.length === 3) return (parts[0] ?? 0) * 3600 + (parts[1] ?? 0) * 60 + (parts[2] ?? 0);
+  if (parts.length === 2) return (parts[0] ?? 0) * 60 + (parts[1] ?? 0);
+  return 0;
+}
+
+function parseDidlItems(didl: string, deviceIp: string): SonosQueueItem[] {
+  const items: SonosQueueItem[] = [];
+  const itemRe = /<item\s[^>]*>([\s\S]*?)<\/item>/g;
+  let m: RegExpExecArray | null;
+  let idx = 0;
+
+  while ((m = itemRe.exec(didl)) !== null) {
+    const fullTag = m[0]!;
+    const body    = m[1]!;
+
+    const idMatch = /\bid="([^"]*)"/.exec(fullTag);
+    const id      = idMatch?.[1] ?? `Q:0/${idx + 1}`;
+
+    const title      = extractXmlValue(body, 'dc:title');
+    const artist     = extractXmlValue(body, 'upnp:artist')
+                    || extractXmlValue(body, 'r:albumArtist')
+                    || extractXmlValue(body, 'dc:creator');
+    const albumTitle = extractXmlValue(body, 'upnp:album');
+
+    // albumArtURI may be relative (starts with /) or absolute
+    const rawCover = extractXmlValue(body, 'upnp:albumArtURI');
+    const coverUrl = rawCover
+      ? rawCover.startsWith('http')
+        ? rawCover
+        : `http://${deviceIp}:1400${rawCover}`
+      : null;
+
+    // res element: duration attribute + text content = Sonos URI
+    const resMatch = /<res\b[^>]*\bduration="([^"]*)"[^>]*>([^<]*)<\/res>/.exec(body);
+    const durationSec = resMatch ? parseTimeSeconds(resMatch[1] ?? '') : 0;
+    const uri = resMatch ? (resMatch[2] ?? '').trim() : '';
+
+    items.push({
+      id,
+      trackIndex: idx++,
+      title,
+      artist,
+      albumTitle,
+      durationSeconds: durationSec,
+      durationFormatted: formatDuration(durationSec),
+      coverUrl,
+      uri,
+    });
+  }
+
+  return items;
+}
+
+function emptyPositionInfo(): SonosPositionInfo {
+  return {
+    trackNumber: 0,
+    trackDurationSeconds: 0,
+    progressSeconds: 0,
+    trackUri: '',
+    trackTitle: '',
+    trackArtist: '',
+    trackAlbum: '',
+    trackCoverUrl: null,
+  };
+}
+
 // ── Real adapter ─────────────────────────────────────────────────────────────
 
 interface DeviceEntry {
@@ -201,9 +292,9 @@ interface DeviceEntry {
 }
 
 export class SonosRealAdapter implements SonosAdapter {
-  private devices  = new Map<string, DeviceEntry>(); // key: nameToId(roomName)
-  private rooms    = new Map<string, SonosRoom>();    // key: room id
-  private discovered: DiscoveredDevice[] = [];
+  private devices    = new Map<string, DeviceEntry>(); // key: nameToId(roomName)
+  private rooms      = new Map<string, SonosRoom>();    // key: room id
+  private discovered : DiscoveredDevice[] = [];
   private lastError: string | null = null;
 
   private readonly discoveryTimeoutMs: number;
@@ -223,47 +314,73 @@ export class SonosRealAdapter implements SonosAdapter {
       .filter(Boolean);
   }
 
+  private async runDiscovery(): Promise<void> {
+    let ips: string[];
+
+    if (this.staticIPs.length > 0) {
+      console.log('[Sonos] Using static IPs from SONOS_DEVICE_IPS');
+      ips = this.staticIPs;
+    } else {
+      ips = await discoverSonosIPs(this.discoveryTimeoutMs);
+      console.log(`[Sonos] SSDP found ${ips.length} candidate IP(s)`);
+    }
+
+    const results = await Promise.all(
+      ips.map(async (ip) => {
+        const info = await fetchDeviceInfo(ip, 3000);
+        return info ? { ip, ...info } : null;
+      }),
+    );
+
+    this.devices.clear();
+    this.discovered = [];
+
+    for (const r of results) {
+      if (!r) continue;
+      const id = nameToId(r.roomName);
+      this.devices.set(id, { ip: r.ip, model: r.model });
+      this.discovered.push({ name: r.roomName, ip: r.ip, model: r.model });
+      console.log(`[Sonos]   ✓ ${r.roomName} (${r.model}) @ ${r.ip}`);
+    }
+
+    this.buildRooms();
+
+    const missing = EXPECTED_ROOMS.filter(n => !this.devices.has(nameToId(n)));
+    missing.forEach(n => console.log(`[Sonos]   ⚠ ${n}: not found — marked offline`));
+    console.log(`[Sonos] Discovery complete: ${this.devices.size}/${EXPECTED_ROOMS.length} room(s) online`);
+  }
+
   async initialize(): Promise<void> {
     console.log('[Sonos] Mode: real — starting discovery...');
-    try {
-      let ips: string[];
-
-      if (this.staticIPs.length > 0) {
-        // Static IPs provided — skip SSDP (useful when multicast is blocked)
-        console.log('[Sonos] Using static IPs from SONOS_DEVICE_IPS');
-        ips = this.staticIPs;
-      } else {
-        ips = await discoverSonosIPs(this.discoveryTimeoutMs);
-        console.log(`[Sonos] SSDP found ${ips.length} candidate IP(s)`);
+    // Retry up to 3 times — SSDP multicast can be timing-sensitive on Windows
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await this.runDiscovery();
+        if (this.devices.size > 0) return;
+        if (attempt < 3) {
+          console.log(`[Sonos] No devices found on attempt ${attempt}/3, retrying in 3s...`);
+          await new Promise(r => setTimeout(r, 3000));
+        }
+      } catch (err) {
+        this.lastError = err instanceof Error ? err.message : String(err);
+        console.error(`[Sonos] Discovery error (attempt ${attempt}/3):`, this.lastError);
+        if (attempt < 3) await new Promise(r => setTimeout(r, 3000));
       }
-
-      // Resolve device info for each candidate IP
-      const results = await Promise.all(
-        ips.map(async (ip) => {
-          const info = await fetchDeviceInfo(ip, 3000);
-          return info ? { ip, ...info } : null;
-        }),
-      );
-
-      for (const r of results) {
-        if (!r) continue;
-        const id = nameToId(r.roomName);
-        this.devices.set(id, { ip: r.ip, model: r.model });
-        this.discovered.push({ name: r.roomName, ip: r.ip, model: r.model });
-        console.log(`[Sonos]   ✓ ${r.roomName} (${r.model}) @ ${r.ip}`);
-      }
-
-      // Build room list based on expected rooms
+    }
+    if (this.devices.size === 0) {
+      console.warn('[Sonos] All discovery attempts failed — all rooms offline. Use SONOS_DEVICE_IPS for static config.');
       this.buildRooms();
+    }
+  }
 
-      const missing = EXPECTED_ROOMS.filter(n => !this.devices.has(nameToId(n)));
-      missing.forEach(n => console.log(`[Sonos]   ⚠ ${n}: not found — marked offline`));
-
-      console.log(`[Sonos] Discovery complete: ${this.devices.size}/${EXPECTED_ROOMS.length} room(s) online`);
+  async rediscover(): Promise<void> {
+    console.log('[Sonos] Manual rediscover triggered...');
+    try {
+      await this.runDiscovery();
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
-      console.error('[Sonos] Discovery error:', this.lastError);
-      this.buildRooms(); // all rooms offline
+      console.error('[Sonos] Rediscover error:', this.lastError);
+      this.buildRooms();
     }
   }
 
@@ -415,6 +532,211 @@ export class SonosRealAdapter implements SonosAdapter {
   async previous(): Promise<void> {
     await this.avTransport('Previous',
       `<u:Previous xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:Previous>`);
+  }
+
+  // ── Position info via AVTransport GetPositionInfo ──────────────────────────
+
+  async getPositionInfo(): Promise<SonosPositionInfo> {
+    const device = this.getPrimaryDevice();
+    if (!device) {
+      console.log('[Sonos] getPositionInfo: no primary device — returning zeros');
+      return emptyPositionInfo();
+    }
+
+    try {
+      const response = await soapPost(
+        device.ip, AV_PATH, AV_TRANSPORT, 'GetPositionInfo',
+        `<u:GetPositionInfo xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:GetPositionInfo>`,
+        this.commandTimeoutMs,
+      );
+
+      const trackStr  = extractXmlValue(response, 'Track');
+      const trackDur  = extractXmlValue(response, 'TrackDuration');
+      const relTime   = extractXmlValue(response, 'RelTime');
+      const trackUri  = extractXmlValue(response, 'TrackURI');
+      const rawMeta   = extractXmlValue(response, 'TrackMetaData');
+
+      const trackNumber     = parseInt(trackStr, 10) || 0;
+      const durationSeconds = parseTimeSeconds(trackDur);
+      const progressSeconds = parseTimeSeconds(relTime);
+
+      // Parse TrackMetaData DIDL-Lite for rich current-track metadata
+      let trackTitle = '', trackArtist = '', trackAlbum = '', trackCoverUrl: string | null = null;
+      if (rawMeta && rawMeta !== 'NOT_IMPLEMENTED') {
+        const decoded = rawMeta
+          .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+        const metaItems = parseDidlItems(decoded, device.ip);
+        if (metaItems.length > 0) {
+          const first = metaItems[0]!;
+          trackTitle   = first.title;
+          trackArtist  = first.artist;
+          trackAlbum   = first.albumTitle;
+          trackCoverUrl = first.coverUrl;
+        }
+      }
+
+      console.log(
+        `[Sonos Position] track=${trackNumber} relTime=${progressSeconds}s ` +
+        `duration=${durationSeconds}s uri="${trackUri.slice(0, 60)}"`,
+      );
+
+      return { trackNumber, trackDurationSeconds: durationSeconds, progressSeconds, trackUri, trackTitle, trackArtist, trackAlbum, trackCoverUrl };
+    } catch (err) {
+      console.warn('[Sonos] getPositionInfo failed:', err instanceof Error ? err.message : String(err));
+      return emptyPositionInfo();
+    }
+  }
+
+  // ── Media info via AVTransport GetMediaInfo ───────────────────────────────
+
+  async getMediaInfo(): Promise<SonosMediaContext> {
+    const device = this.getPrimaryDevice();
+    if (!device) return { contextType: 'unknown', contextId: '', contextUri: '', contextTitle: '' };
+
+    try {
+      const response = await soapPost(
+        device.ip, AV_PATH, AV_TRANSPORT, 'GetMediaInfo',
+        `<u:GetMediaInfo xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:GetMediaInfo>`,
+        this.commandTimeoutMs,
+      );
+
+      const rawUri = extractXmlValue(response, 'CurrentURI');
+      if (!rawUri) return { contextType: 'unknown', contextId: '', contextUri: '', contextTitle: '' };
+
+      const decoded = decodeURIComponent(rawUri);
+
+      // Extract CurrentURIMetaData using indexOf — more robust than regex for large/unencoded DIDL
+      const metaOpen = '<CurrentURIMetaData>';
+      const metaClose = '</CurrentURIMetaData>';
+      const metaStart = response.indexOf(metaOpen);
+      const metaEnd   = response.indexOf(metaClose, metaStart);
+      const rawMeta = metaStart !== -1 && metaEnd !== -1
+        ? response.slice(metaStart + metaOpen.length, metaEnd)
+        : '';
+
+      // Parse playlist context from CurrentURIMetaData DIDL
+      // Decode order: &amp; first (handles double-encoded content), then &lt;/&gt;
+      let contextTitle = '';
+      let contextId = '';
+      let isPlaylistContext = false;
+
+      if (rawMeta && rawMeta !== 'NOT_IMPLEMENTED') {
+        const decodedMeta = rawMeta
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<').replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"').replace(/&apos;/g, "'");
+
+        const upnpClass = extractXmlValue(decodedMeta, 'upnp:class');
+        isPlaylistContext = upnpClass.toLowerCase().includes('playlist');
+
+        // Only use dc:title as playlist name when metadata describes a container/playlist
+        if (isPlaylistContext) {
+          contextTitle = extractXmlValue(decodedMeta, 'dc:title');
+        }
+
+        // Also search for Spotify playlist ID anywhere in the decoded metadata
+        // (may appear in container id attr as "1006006cspotify:playlist:ID" or encoded)
+        if (!contextId) {
+          const idMatch = decodedMeta.match(/spotify:playlist:([A-Za-z0-9]+)/)
+                       ?? decodedMeta.match(/spotify%3[Aa]playlist%3[Aa]([A-Za-z0-9]+)/);
+          if (idMatch) {
+            contextId = idMatch[1] ?? '';
+            isPlaylistContext = true;
+          }
+        }
+
+        console.log(
+          `[Sonos MediaInfo] meta: class="${upnpClass}" isPlaylist=${isPlaylistContext}` +
+          ` title="${contextTitle}" id="${contextId}"`,
+        );
+      }
+
+      console.log(`[Sonos MediaInfo] CurrentURI="${decoded.slice(0, 120)}"`);
+
+      // Detect context from CurrentURI
+      if (decoded.includes('spotify:playlist:')) {
+        const after = decoded.split('spotify:playlist:')[1] ?? '';
+        const uriId = after.split(/[?&#\s]/)[0] ?? '';
+        return { contextType: 'playlist', contextId: contextId || uriId, contextUri: decoded, contextTitle };
+      }
+      if (decoded.includes('spotify:album:')) {
+        const after = decoded.split('spotify:album:')[1] ?? '';
+        const uriId = after.split(/[?&#\s]/)[0] ?? '';
+        return { contextType: 'album', contextId: uriId, contextUri: decoded, contextTitle };
+      }
+      if (isPlaylistContext) {
+        return { contextType: 'playlist', contextId, contextUri: decoded, contextTitle };
+      }
+      return { contextType: 'track', contextId: '', contextUri: decoded, contextTitle: '' };
+    } catch (err) {
+      console.warn('[Sonos] getMediaInfo failed:', err instanceof Error ? err.message : String(err));
+      return { contextType: 'unknown', contextId: '', contextUri: '', contextTitle: '' };
+    }
+  }
+
+  async getTransportInfo(): Promise<{ isPlaying: boolean }> {
+    const device = this.getPrimaryDevice();
+    if (!device) return { isPlaying: false };
+    try {
+      const response = await soapPost(
+        device.ip, AV_PATH, AV_TRANSPORT, 'GetTransportInfo',
+        `<u:GetTransportInfo xmlns:u="${AV_TRANSPORT}"><InstanceID>0</InstanceID></u:GetTransportInfo>`,
+        this.commandTimeoutMs,
+      );
+      const state = extractXmlValue(response, 'CurrentTransportState');
+      return { isPlaying: state === 'PLAYING' };
+    } catch {
+      return { isPlaying: false };
+    }
+  }
+
+  // ── Queue via UPnP ContentDirectory Browse ────────────────────────────────
+
+  async getQueue(): Promise<SonosQueueItem[]> {
+    const device = this.getPrimaryDevice();
+    if (!device) {
+      console.log('[Sonos] getQueue: no primary device available — returning empty');
+      return [];
+    }
+
+    const innerBody =
+      `<u:Browse xmlns:u="${CONTENT_DIRECTORY}">` +
+      `<ObjectID>Q:0</ObjectID>` +
+      `<BrowseFlag>BrowseDirectChildren</BrowseFlag>` +
+      `<Filter>*</Filter>` +
+      `<StartingIndex>0</StartingIndex>` +
+      `<RequestedCount>100</RequestedCount>` +
+      `<SortCriteria></SortCriteria>` +
+      `</u:Browse>`;
+
+    try {
+      const response = await soapPost(
+        device.ip, CONTENT_DIR_PATH, CONTENT_DIRECTORY, 'Browse', innerBody, this.commandTimeoutMs,
+      );
+
+      const rStart = response.indexOf('<Result>');
+      const rEnd   = response.indexOf('</Result>');
+      if (rStart === -1 || rEnd === -1) {
+        console.log('[Sonos] getQueue: no <Result> in Browse response — queue empty');
+        return [];
+      }
+
+      const encoded = response.slice(rStart + 8, rEnd);
+      const didl = encoded
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&amp;/g, '&')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+
+      const items = parseDidlItems(didl, device.ip);
+      console.log(`[Sonos] getQueue: ${items.length} item(s) from "${device.name}" (${device.ip})`);
+      return items;
+    } catch (err) {
+      console.warn('[Sonos] getQueue failed:', err instanceof Error ? err.message : String(err));
+      return [];
+    }
   }
 
   getDiagnostics(): SonosDiagnostics {

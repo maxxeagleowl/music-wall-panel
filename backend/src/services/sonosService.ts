@@ -1,7 +1,11 @@
 import { getSonosAdapter } from './sonos/sonosAdapter';
-import type { SonosDiagnostics, SonosRoom } from './sonos/sonosTypes';
+import type { SonosDiagnostics, SonosRoom, SonosQueueItem, SonosPositionInfo, SonosMediaContext } from './sonos/sonosTypes';
 
-export type { SonosRoom, SonosDiagnostics };
+export type { SonosRoom, SonosDiagnostics, SonosQueueItem, SonosPositionInfo, SonosMediaContext };
+
+export function rediscover(): Promise<void> {
+  return getSonosAdapter().rediscover();
+}
 
 export function getRooms(): Promise<SonosRoom[]> {
   return getSonosAdapter().getRooms();
@@ -37,4 +41,20 @@ export function previous(): Promise<void> {
 
 export function getDiagnostics(): SonosDiagnostics {
   return getSonosAdapter().getDiagnostics();
+}
+
+export function getQueue(): Promise<SonosQueueItem[]> {
+  return getSonosAdapter().getQueue();
+}
+
+export function getPositionInfo(): Promise<SonosPositionInfo> {
+  return getSonosAdapter().getPositionInfo();
+}
+
+export function getMediaInfo(): Promise<SonosMediaContext> {
+  return getSonosAdapter().getMediaInfo();
+}
+
+export function getTransportInfo(): Promise<{ isPlaying: boolean }> {
+  return getSonosAdapter().getTransportInfo();
 }

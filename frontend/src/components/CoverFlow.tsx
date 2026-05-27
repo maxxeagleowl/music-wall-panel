@@ -13,7 +13,8 @@ type CoverFlowProps = {
   onSwipeNext: () => void;
   onDropToNowPlaying: (albumId: string) => void;
   onPlayTrack: (albumId: string, track: Track) => void;
-  onQueueTrack: (albumId: string, track: Track) => void;
+  onQueueNext: (albumId: string, track: Track) => void;
+  onQueueAppend: (albumId: string, track: Track) => void;
   onShowTrackDetails: (albumId: string, track: Track) => void;
   onDragStateChange: (dragging: boolean) => void;
 };
@@ -29,7 +30,8 @@ export function CoverFlow({
   onSwipeNext,
   onDropToNowPlaying,
   onPlayTrack,
-  onQueueTrack,
+  onQueueNext,
+  onQueueAppend,
   onShowTrackDetails,
   onDragStateChange
 }: CoverFlowProps) {
@@ -136,7 +138,8 @@ export function CoverFlow({
               onSwipeNext={onSwipeNext}
               onDropToNowPlaying={() => onDropToNowPlaying(album.id)}
               onPlayTrack={(track) => onPlayTrack(album.id, track)}
-              onQueueTrack={(track) => onQueueTrack(album.id, track)}
+              onQueueNext={(track) => onQueueNext(album.id, track)}
+              onQueueAppend={(track) => onQueueAppend(album.id, track)}
               onShowTrackDetails={(track) => onShowTrackDetails(album.id, track)}
               onDragStateChange={onDragStateChange}
             />

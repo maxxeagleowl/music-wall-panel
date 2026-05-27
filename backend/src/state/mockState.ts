@@ -6,6 +6,20 @@ export interface Room {
   groupId: string | null;
 }
 
+export interface QueueItem {
+  id: string;
+  albumId: string;
+  trackId: string;
+  trackIndex: number;
+  title: string;
+  artist: string;
+  albumTitle: string;
+  durationSeconds: number;
+  durationFormatted: string;
+  coverUrl: string | null;
+  source: 'queue' | 'album';
+}
+
 export interface PlaybackState {
   isPlaying: boolean;
   currentAlbumId: string;
@@ -22,6 +36,8 @@ export const mockState = {
     progress: 0,
     totalDuration: 252,
   } as PlaybackState,
+
+  queue: [] as QueueItem[],
 
   rooms: [
     { id: 'room-001', name: 'Wohnzimmer',   volume: 45, muted: false, groupId: 'group-001' },

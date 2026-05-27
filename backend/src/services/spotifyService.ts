@@ -137,3 +137,17 @@ export async function getDevices(): Promise<AppDevice[]> {
   const data = await spotifyGet<{ devices: SpotifyDevice[] }>('/me/player/devices');
   return data.devices.map(mapDevice);
 }
+
+/** Returns the current Spotify playback context (playlist/album URI + type), or null. */
+export async function getCurrentPlaybackContext(): Promise<{
+  type: string;
+  uri: string;
+  trackId: string | null;
+} | null> {
+  const data = await spotifyGet<{
+    context: { type: string; uri: string } | null;
+    item: { id: string } | null;
+  } | null>('/me/player?additional_types=track');
+  if (!data?.context) return null;
+  return { ...data.context, trackId: data.item?.id ?? null };
+}

@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState, useMemo, useRef } from 'react';
 import { mockAlbums, getAlbumById } from './data/mockMusic';
 import * as playbackApi from './api/playbackApi';
+import type { QueueItem } from './api/playbackApi';
 import * as sonosApi from './api/sonosApi';
 import type { BackendRoom } from './api/sonosApi';
 import { getSpotifyStatus, spotifyLogout, type SpotifyStatus } from './api/spotifyAuthApi';
@@ -66,6 +67,11 @@ const EMPTY_FAVORITEN: Album = {
   tracks: [],
 };
 
+function parseDurationSeconds(duration: string): number {
+  const [m, s] = duration.split(':').map(Number);
+  return (m ?? 0) * 60 + (s ?? 0);
+}
+
 // ── App ────────────────────────────────────────────────────────────────────────
 
 export default function App() {
@@ -77,7 +83,8 @@ export default function App() {
   const [flippedAlbumId, setFlippedAlbumId] = useState<string | null>(null);
   const flipResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isDraggingAlbum, setIsDraggingAlbum] = useState(false);
-  const [queueTrackId, setQueueTrackId] = useState<string | null>(null);
+  const [queueToastVisible, setQueueToastVisible] = useState(false);
+  const queueToastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [detailsTrack, setDetailsTrack] = useState<{ album: Album; track: Track } | null>(null);
   const [rooms, setRooms] = useState<SonosRoom[]>([]);
   const [spotifyStatus, setSpotifyStatus] = useState<SpotifyStatus>({ connected: false });
@@ -94,10 +101,7 @@ export default function App() {
 
   // ── Playback state ──────────────────────────────────────────────────────────
   // Backend is the authority for timing; these are render copies kept in sync by polling.
-  // nowPlayingDisplayAlbumId is the album shown in NowPlaying — set by user drag/play actions,
-  // NOT overridden by backend polling (which only knows mock album IDs).
   const [nowPlayingDisplayAlbumId, setNowPlayingDisplayAlbumId] = useState<string>(mockAlbums[0].id);
-  // Ref kept in sync so polling closure (empty-dep effect) can read the current album ID
   const nowPlayingAlbumIdRef = useRef(mockAlbums[0].id);
   function setNowPlayingAlbum(id: string) {
     nowPlayingAlbumIdRef.current = id;
@@ -107,6 +111,8 @@ export default function App() {
   const [isPlaying, setIsPlaying] = useState(true);
   const [progress, setProgress] = useState(0);
   const [total, setTotal] = useState(252);
+  const [backendQueue, setBackendQueue] = useState<QueueItem[]>([]);
+  const [sonosCurrentTrack, setSonosCurrentTrack] = useState<playbackApi.CurrentTrack | null>(null);
 
   // ── Spotify library ─────────────────────────────────────────────────────────
   const spotifyLibrary = useSpotifyLibrary(spotifyStatus.connected);
@@ -269,8 +275,6 @@ export default function App() {
       const stillPresent = displayAlbums.some((a) => a.id === cur);
       return stillPresent ? cur : displayAlbums[0].id;
     });
-    // Only unflip if the flipped album is no longer in the list (e.g. tab switch),
-    // not when the same album gets enriched with track data.
     setFlippedAlbumId((cur) => {
       if (!cur) return null;
       return displayAlbums.some((a) => a.id === cur) ? cur : null;
@@ -280,13 +284,29 @@ export default function App() {
   // ── Safety helpers ──────────────────────────────────────────────────────────
 
   function getDisplayedAlbumById(id: string): Album {
-    return (
-      enrichedAlbumsById[id] ??
-      displayAlbums.find((a) => a.id === id) ??
-      spotifyLibrary.albums.find((a) => a.id === id) ??
-      mockAlbums.find((a) => a.id === id) ??
-      mockAlbums[0]
-    );
+    if (enrichedAlbumsById[id]) return enrichedAlbumsById[id]!;
+    const fromDisplay = displayAlbums.find((a) => a.id === id);
+    if (fromDisplay) return fromDisplay;
+    const fromAlbum = spotifyLibrary.albums.find((a) => a.id === id);
+    if (fromAlbum) return fromAlbum;
+    const fromPlaylist = spotifyLibrary.playlists.find((p) => p.id === id);
+    if (fromPlaylist) return {
+      id: fromPlaylist.id,
+      artist: fromPlaylist.owner || 'Playlist',
+      title: fromPlaylist.name,
+      year: new Date().getFullYear(),
+      genre: `${fromPlaylist.trackCount} Tracks`,
+      mood: fromPlaylist.description,
+      label: '',
+      accent: SPOTIFY_ACCENT,
+      accentSoft: SPOTIFY_ACCENT_SOFT,
+      coverTag: fromPlaylist.name.slice(0, 2).toUpperCase(),
+      coverPattern: SPOTIFY_COVER_PATTERN,
+      coverText: fromPlaylist.name.slice(0, 2).toUpperCase(),
+      coverUrl: fromPlaylist.coverUrl,
+      tracks: [],
+    };
+    return mockAlbums.find((a) => a.id === id) ?? mockAlbums[0];
   }
 
   function getSafeTrack(album: Album, index: number): Track {
@@ -299,27 +319,29 @@ export default function App() {
   const currentTrack = getSafeTrack(nowPlayingAlbum, currentTrackIndex);
   const highlighted = isDraggingAlbum;
   const isNowPlayingPlaylist =
+    sonosCurrentTrack?.contextType === 'playlist' ||
+    (sonosCurrentTrack?.source === 'sonos' && !!sonosCurrentTrack.contextTitle) ||
     spotifyLibrary.playlists.some((p) => p.id === nowPlayingDisplayAlbumId) ||
     (searchInjectedAlbum?.tab === 'Playlists' && searchInjectedAlbum.album.id === nowPlayingDisplayAlbumId);
 
   // ── Playback polling ────────────────────────────────────────────────────────
   function applyBackendState(state: playbackApi.NowPlayingResponse | null) {
     if (!state) return;
-    // In real transport mode, mock isPlaying is stale — poll must not override Sonos-commanded state
-    if (!isRealTransportModeRef.current) {
+    if (state.current?.source === 'sonos') {
+      isRealTransportModeRef.current = true;
+      setSonosCurrentTrack(state.current);
+      setIsPlaying(state.isPlaying);
+    } else if (!isRealTransportModeRef.current) {
       setIsPlaying(state.isPlaying);
     }
     setProgress(state.progress);
     setTotal(state.totalDuration);
-    // Only sync track index from backend for mock albums — Spotify content manages its own index
+    setBackendQueue(state.queue);
     if (mockAlbums.some((a) => a.id === nowPlayingAlbumIdRef.current)) {
       setCurrentTrackIndex(state.currentTrackIndex);
     }
-    // Note: state.currentAlbumId is a mock ID — we keep our own nowPlayingDisplayAlbumId
-    // so real Spotify album metadata is not overridden by polling
   }
 
-  // Called after every transport API response. Activates real-mode guard on first null result.
   function handleTransportResult(result: playbackApi.NowPlayingResponse | null): void {
     if (result === null) {
       isRealTransportModeRef.current = true;
@@ -329,11 +351,9 @@ export default function App() {
   }
 
   useEffect(() => {
-    // Initial fetch also seeds the display album from backend
     playbackApi.getNowPlaying()
       .then((state) => {
         applyBackendState(state);
-        // Only set from backend on first load (when still at default mock)
         if (nowPlayingAlbumIdRef.current === mockAlbums[0].id) {
           setNowPlayingAlbum(state.currentAlbumId);
         }
@@ -347,8 +367,10 @@ export default function App() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Sync progress bar total to actual Spotify track duration when track changes
+  // Sync progress bar total to Spotify track duration for mock Sonos mode only.
+  // In real Sonos mode the backend provides totalDuration from AVTransport GetPositionInfo.
   useEffect(() => {
+    if (isRealTransportModeRef.current) return;
     if (mockAlbums.some((a) => a.id === nowPlayingDisplayAlbumId)) return;
     const album = enrichedAlbumsById[nowPlayingDisplayAlbumId];
     const track = album?.tracks[currentTrackIndex];
@@ -375,7 +397,6 @@ export default function App() {
 
   useEffect(() => {
     function fetchRooms(force = false) {
-      // Skip poll if user is actively adjusting sliders/buttons (within last 3 s)
       if (!force && Date.now() - lastSonosInteraction.current < 3000) return;
       sonosApi.getRooms()
         .then((backendRooms) => {
@@ -389,7 +410,7 @@ export default function App() {
         .catch(console.error);
     }
 
-    fetchRooms(true); // initial load always applies
+    fetchRooms(true);
     const id = window.setInterval(() => fetchRooms(), 5000);
     return () => window.clearInterval(id);
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -399,17 +420,25 @@ export default function App() {
     getSpotifyStatus().then(setSpotifyStatus).catch(console.error);
   }, []);
 
+  // In real Sonos mode: wenn Playlist-Kontext erkannt, NowPlaying auf Playlist-ID setzen + Details laden
+  useEffect(() => {
+    if (sonosCurrentTrack?.contextType !== 'playlist' || !sonosCurrentTrack.contextId) return;
+    setNowPlayingAlbum(sonosCurrentTrack.contextId);
+    ensureAlbumDetails(sonosCurrentTrack.contextId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sonosCurrentTrack?.contextId, sonosCurrentTrack?.contextType]);
+
   const handleSpotifyLogout = () => {
     spotifyLogout()
       .then(() => setSpotifyStatus({ connected: false }))
       .catch(console.error);
   };
 
-  useEffect(() => {
-    if (!queueTrackId) return undefined;
-    const timeout = window.setTimeout(() => setQueueTrackId(null), 2400);
-    return () => window.clearTimeout(timeout);
-  }, [queueTrackId]);
+  function showQueueToast() {
+    setQueueToastVisible(true);
+    if (queueToastTimer.current) clearTimeout(queueToastTimer.current);
+    queueToastTimer.current = window.setTimeout(() => setQueueToastVisible(false), 2400);
+  }
 
   // ── Navigation ──────────────────────────────────────────────────────────────
 
@@ -426,7 +455,6 @@ export default function App() {
   }
 
   function handleSearchAlbumSelect(album: Album) {
-    // Inject into Auswahl tab (even if not in saved library)
     setSearchInjectedAlbum({ album, tab: 'Auswahl' });
     setActiveNav('Auswahl');
     setSelectedAlbumId(album.id);
@@ -438,7 +466,6 @@ export default function App() {
   }
 
   function handleSearchTrackSelect(track: SearchTrack) {
-    // Build a minimal album stub so NowPlaying shows the right track immediately
     const stub: Album = {
       id: track.albumId,
       artist: track.artist,
@@ -470,7 +497,6 @@ export default function App() {
     setIsPlaying(true);
     setSearchOpen(false);
     playbackApi.play().then(handleTransportResult).catch(console.error);
-    // Load full album in background for backside/queue
     ensureAlbumDetails(track.albumId);
   }
 
@@ -523,21 +549,42 @@ export default function App() {
     const isMock = mockAlbums.some((a) => a.id === albumId);
     const isPlaceholder = albumId.startsWith('__');
 
-    // Placeholders are not real albums — ignore drag
     if (isPlaceholder) return;
-
-    // Immediately update display state so NowPlaying shows the dropped album
-    setSelectedAlbumId(albumId);
-    setNowPlayingAlbum(albumId);
-    setCurrentTrackIndex(0);
-    setProgress(0);
-    setIsPlaying(true);
     setFlippedAlbumId(null);
 
     if (isMock) {
+      setSelectedAlbumId(albumId);
+      setNowPlayingAlbum(albumId);
+      setCurrentTrackIndex(0);
+      setProgress(0);
+      setIsPlaying(true);
       playbackApi.playAlbum(albumId).then(applyBackendState).catch(console.error);
+    } else if (isRealTransportModeRef.current) {
+      // Real Sonos mode: Spotify album playback not yet supported (Phase 14).
+      // Show the dragged album art briefly as visual feedback, but set NO optimistic
+      // isPlaying / progress / trackIndex — those belong to Sonos, not us.
+      const prevNowPlayingId = nowPlayingAlbumIdRef.current;
+      const prevSelectedId = selectedAlbumId;
+      setSelectedAlbumId(albumId);
+      setNowPlayingAlbum(albumId);
+      ensureAlbumDetails(albumId);
+      playbackApi.playAlbum(albumId)
+        .then(applyBackendState)
+        .catch((err: Error) => {
+          console.log('[NowPlaying] Sonos: Spotify album playback not yet supported (Phase 14) —', err.message);
+          // Restore all display state that was changed optimistically
+          setSelectedAlbumId(prevSelectedId);
+          setNowPlayingAlbum(prevNowPlayingId);
+          // Pull a fresh now-playing snapshot so progress, total and queue are in sync
+          playbackApi.getNowPlaying().then(applyBackendState).catch(console.error);
+        });
     } else {
-      // Spotify album: reset backend progress to 0, then start playing
+      // Mock Sonos mode with Spotify album: seek+play keeps mock timer running
+      setSelectedAlbumId(albumId);
+      setNowPlayingAlbum(albumId);
+      setCurrentTrackIndex(0);
+      setProgress(0);
+      setIsPlaying(true);
       ensureAlbumDetails(albumId);
       playbackApi.seek(0)
         .then(() => playbackApi.play())
@@ -557,7 +604,6 @@ export default function App() {
       const trackIndex = Math.max(0, album.tracks.findIndex((t) => t.id === track.id));
       playbackApi.playTrack(albumId, trackIndex).then(applyBackendState).catch(console.error);
     } else {
-      // Spotify album: set track index locally by position in Spotify track list
       const album = getDisplayedAlbumById(albumId);
       const trackIndex = Math.max(0, album.tracks.findIndex((t) => t.id === track.id));
       setCurrentTrackIndex(trackIndex);
@@ -567,8 +613,54 @@ export default function App() {
     }
   };
 
-  const handleQueueTrack = (_albumId: string, track: Track) => {
-    setQueueTrackId(track.id);
+  // Build a QueueItem from an album + track for API calls
+  function buildQueueItem(albumId: string, track: Track): Omit<QueueItem, 'id' | 'source'> {
+    const album = getDisplayedAlbumById(albumId);
+    const trackIndex = album.tracks.findIndex((t) => t.id === track.id);
+    return {
+      albumId,
+      trackId: track.id,
+      trackIndex: trackIndex >= 0 ? trackIndex : 0,
+      title: track.title,
+      artist: track.artist ?? album.artist,
+      albumTitle: track.albumTitle ?? album.title,
+      durationSeconds: parseDurationSeconds(track.duration),
+      durationFormatted: track.duration,
+      coverUrl: track.albumCoverUrl ?? album.coverUrl ?? null,
+    };
+  }
+
+  const handleQueueNext = (albumId: string, track: Track) => {
+    const item = buildQueueItem(albumId, track);
+    playbackApi.addToQueue(item, 'next')
+      .then(({ queue }) => setBackendQueue(queue))
+      .catch(console.error);
+    showQueueToast();
+  };
+
+  const handleQueueAppend = (albumId: string, track: Track) => {
+    const item = buildQueueItem(albumId, track);
+    playbackApi.addToQueue(item, 'append')
+      .then(({ queue }) => setBackendQueue(queue))
+      .catch(console.error);
+    showQueueToast();
+  };
+
+  // Called when user taps a queue item in NowPlaying
+  const handleQueueItemSelect = (item: QueueItem) => {
+    const isMock = mockAlbums.some((a) => a.id === item.albumId);
+    setNowPlayingAlbum(item.albumId);
+
+    if (isMock) {
+      playbackApi.playTrack(item.albumId, item.trackIndex).then(applyBackendState).catch(console.error);
+    } else {
+      const album = getDisplayedAlbumById(item.albumId);
+      const trackIndex = album.tracks.findIndex((t) => t.id === item.trackId);
+      setCurrentTrackIndex(trackIndex >= 0 ? trackIndex : 0);
+      setProgress(0);
+      setIsPlaying(true);
+      playbackApi.seek(0).then(() => playbackApi.play()).then(handleTransportResult).catch(console.error);
+    }
   };
 
   const handleShowTrackDetails = (albumId: string, track: Track) => {
@@ -655,12 +747,10 @@ export default function App() {
   const handleVolumeChange = (roomId: string, volume: number) => {
     lastSonosInteraction.current = Date.now();
 
-    // Optimistic: update slider immediately so animation feels instant
     setRooms((current) =>
       current.map((r) => (r.id === roomId ? { ...r, volume, muted: volume === 0 } : r))
     );
 
-    // Confirm with backend; only update availability from response (volume is already correct)
     sonosApi.setVolume(roomId, volume)
       .then((updated) => {
         setRooms((current) =>
@@ -677,9 +767,8 @@ export default function App() {
     if (!room) return;
 
     lastSonosInteraction.current = Date.now();
-    const newMuted = room.volume > 0; // mute when playing, unmute when already at 0
+    const newMuted = room.volume > 0;
 
-    // Optimistic: volume-to-0 UX (matches SonosRoomCard's volume === 0 mute indicator)
     setRooms((current) =>
       current.map((r) => {
         if (r.id !== roomId) return r;
@@ -709,7 +798,6 @@ export default function App() {
     lastSonosInteraction.current = Date.now();
     const newGroupId = room.groupId ? null : 'main';
 
-    // Optimistic
     setRooms((current) =>
       current.map((r) => {
         if (r.id !== roomId) return r;
@@ -790,7 +878,8 @@ export default function App() {
               onSwipeNext={handleSwipeNext}
               onDropToNowPlaying={handleDropToNowPlaying}
               onPlayTrack={handlePlayTrack}
-              onQueueTrack={handleQueueTrack}
+              onQueueNext={handleQueueNext}
+              onQueueAppend={handleQueueAppend}
               onShowTrackDetails={handleShowTrackDetails}
               onDragStateChange={setIsDraggingAlbum}
             />
@@ -806,12 +895,14 @@ export default function App() {
               progress={progress}
               total={total}
               highlighted={highlighted}
+              queue={backendQueue}
               onPrevious={handlePrevious}
               onTogglePlay={handleTogglePlay}
               onNext={handleNext}
               onSeek={handleSeek}
-              onQueueTrackSelect={(t) => handlePlayTrack(nowPlayingAlbum.id, t)}
+              onQueueItemSelect={handleQueueItemSelect}
               isPlaylist={isNowPlayingPlaylist}
+              currentOverride={sonosCurrentTrack}
             />
           </section>
 
@@ -838,7 +929,7 @@ export default function App() {
 
         {/* ── Queue toast ── */}
         <AnimatePresence>
-          {queueTrackId && (
+          {queueToastVisible && (
             <motion.div
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
@@ -851,7 +942,7 @@ export default function App() {
                 color: themeColors.neutral.text.secondary,
               }}
             >
-              Queue ready
+              Zur Warteschlange hinzugefügt
             </motion.div>
           )}
         </AnimatePresence>

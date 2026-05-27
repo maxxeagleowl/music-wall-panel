@@ -1,4 +1,4 @@
-import type { SonosAdapter, SonosDiagnostics, SonosRoom } from './sonosTypes';
+import type { SonosAdapter, SonosDiagnostics, SonosRoom, SonosQueueItem, SonosPositionInfo, SonosMediaContext } from './sonosTypes';
 
 const INITIAL_ROOMS: SonosRoom[] = [
   { id: 'room-001', name: 'Wohnzimmer',   volume: 45, muted: false, groupId: 'group-001', available: true },
@@ -13,6 +13,8 @@ export class SonosMockAdapter implements SonosAdapter {
   async initialize(): Promise<void> {
     console.log('[Sonos] Mode: mock — simulated rooms active');
   }
+
+  async rediscover(): Promise<void> { /* mock — no-op */ }
 
   async getRooms(): Promise<SonosRoom[]> {
     return this.rooms;
@@ -43,6 +45,33 @@ export class SonosMockAdapter implements SonosAdapter {
   async pause(): Promise<void> { /* mock — no-op */ }
   async next(): Promise<void> { /* mock — no-op */ }
   async previous(): Promise<void> { /* mock — no-op */ }
+
+  async getQueue(): Promise<SonosQueueItem[]> {
+    // Mock queue comes from mockState — real queue read handled by playbackService
+    return [];
+  }
+
+  async getPositionInfo(): Promise<SonosPositionInfo> {
+    // Mock progress is tracked by playbackService timer, not the adapter
+    return {
+      trackNumber: 0,
+      trackDurationSeconds: 0,
+      progressSeconds: 0,
+      trackUri: '',
+      trackTitle: '',
+      trackArtist: '',
+      trackAlbum: '',
+      trackCoverUrl: null,
+    };
+  }
+
+  async getTransportInfo(): Promise<{ isPlaying: boolean }> {
+    return { isPlaying: false };
+  }
+
+  async getMediaInfo(): Promise<SonosMediaContext> {
+    return { contextType: 'unknown', contextId: '', contextUri: '', contextTitle: '' };
+  }
 
   getDiagnostics(): SonosDiagnostics {
     return {

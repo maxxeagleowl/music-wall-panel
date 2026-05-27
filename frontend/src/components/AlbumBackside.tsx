@@ -9,11 +9,12 @@ type AlbumBacksideProps = {
   tracksLoading?: boolean;
   onFlipBack: () => void;
   onPlayTrack: (track: Track) => void;
-  onQueueTrack: (track: Track) => void;
+  onQueueNext: (track: Track) => void;
+  onQueueAppend: (track: Track) => void;
   onShowTrackDetails: (track: Track) => void;
 };
 
-export function AlbumBackside({ album, tracksLoading, onFlipBack, onPlayTrack, onQueueTrack, onShowTrackDetails }: AlbumBacksideProps) {
+export function AlbumBackside({ album, tracksLoading, onFlipBack, onPlayTrack, onQueueNext, onQueueAppend, onShowTrackDetails }: AlbumBacksideProps) {
   return (
     <div
       className="flex h-full w-full flex-col rounded-[2rem] p-4 backdrop-blur-xl"
@@ -82,7 +83,8 @@ export function AlbumBackside({ album, tracksLoading, onFlipBack, onPlayTrack, o
                 <TrackMenu
                   track={track}
                   onPlayNow={onPlayTrack}
-                  onQueueNext={onQueueTrack}
+                  onQueueNext={onQueueNext}
+                  onQueueAppend={onQueueAppend}
                   onShowDetails={onShowTrackDetails}
                 />
               </motion.div>

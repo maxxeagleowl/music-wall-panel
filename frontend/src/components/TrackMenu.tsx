@@ -9,23 +9,25 @@ type TrackMenuProps = {
   track: Track;
   onPlayNow: (track: Track) => void;
   onQueueNext: (track: Track) => void;
+  onQueueAppend: (track: Track) => void;
   onShowDetails: (track: Track) => void;
 };
 
 const actions = [
-  { key: 'play', label: 'Abspielen' },
-  { key: 'queue-next', label: 'Als Naechstes' },
-  { key: 'queue', label: 'In Warteschlange' },
-  { key: 'details', label: 'Details' }
+  { key: 'play',         label: 'Abspielen' },
+  { key: 'queue-next',   label: 'Als Naechstes' },
+  { key: 'queue-append', label: 'In Warteschlange' },
+  { key: 'details',      label: 'Details' }
 ] as const;
 
-export function TrackMenu({ track, onPlayNow, onQueueNext, onShowDetails }: TrackMenuProps) {
+export function TrackMenu({ track, onPlayNow, onQueueNext, onQueueAppend, onShowDetails }: TrackMenuProps) {
   const [open, setOpen] = useState(false);
 
   const handleAction = (action: (typeof actions)[number]['key']) => {
-    if (action === 'play') onPlayNow(track);
-    if (action === 'queue-next' || action === 'queue') onQueueNext(track);
-    if (action === 'details') onShowDetails(track);
+    if (action === 'play')         onPlayNow(track);
+    if (action === 'queue-next')   onQueueNext(track);
+    if (action === 'queue-append') onQueueAppend(track);
+    if (action === 'details')      onShowDetails(track);
     setOpen(false);
   };
 

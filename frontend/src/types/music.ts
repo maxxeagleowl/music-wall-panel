@@ -26,6 +26,20 @@ export type Album = {
   tracks: Track[];
 };
 
+export type QueueItem = {
+  id: string;
+  albumId: string;
+  trackId: string;
+  trackIndex: number;
+  title: string;
+  artist: string;
+  albumTitle: string;
+  durationSeconds: number;
+  durationFormatted: string;
+  coverUrl: string | null;
+  source: 'queue' | 'album';
+};
+
 export type Playlist = {
   id: string;
   name: string;

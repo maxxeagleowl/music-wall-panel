@@ -21,8 +21,39 @@ export interface SonosDiagnostics {
   lastError: string | null;
 }
 
+export interface SonosQueueItem {
+  id: string;
+  trackIndex: number;
+  title: string;
+  artist: string;
+  albumTitle: string;
+  durationSeconds: number;
+  durationFormatted: string;
+  coverUrl: string | null;
+  uri: string;
+}
+
+export interface SonosPositionInfo {
+  trackNumber: number;          // 1-based Sonos queue position (0 = unavailable)
+  trackDurationSeconds: number;
+  progressSeconds: number;
+  trackUri: string;
+  trackTitle: string;
+  trackArtist: string;
+  trackAlbum: string;
+  trackCoverUrl: string | null;
+}
+
+export interface SonosMediaContext {
+  contextType: 'playlist' | 'album' | 'track' | 'unknown';
+  contextId: string;
+  contextUri: string;
+  contextTitle: string;
+}
+
 export interface SonosAdapter {
   initialize(): Promise<void>;
+  rediscover(): Promise<void>;
   getRooms(): Promise<SonosRoom[]>;
   setVolume(id: string, volume: number): Promise<SonosRoom | null>;
   setMute(id: string, muted: boolean): Promise<SonosRoom | null>;
@@ -32,4 +63,8 @@ export interface SonosAdapter {
   next(): Promise<void>;
   previous(): Promise<void>;
   getDiagnostics(): SonosDiagnostics;
+  getQueue(): Promise<SonosQueueItem[]>;
+  getPositionInfo(): Promise<SonosPositionInfo>;
+  getMediaInfo(): Promise<SonosMediaContext>;
+  getTransportInfo(): Promise<{ isPlaying: boolean }>;
 }

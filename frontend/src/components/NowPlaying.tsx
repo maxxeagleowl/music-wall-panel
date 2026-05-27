@@ -1,11 +1,21 @@
 import { motion } from 'framer-motion';
 import { useRef, useEffect } from 'react';
 import { MoreHorizontal } from 'lucide-react';
-import type { Album, Track } from '../types/music';
+import type { Album, Track, QueueItem } from '../types/music';
 import { PlaybackControls } from './PlaybackControls';
 import { ProgressBar } from './ProgressBar';
 import { createMockAlbumTheme } from '../theme/musicTheme';
 import { rgba, themeColors, themeEffects } from '../theme/colors';
+
+type CurrentOverride = {
+  title: string;
+  artist: string;
+  album: string;
+  coverUrl: string | null;
+  source: 'sonos' | 'mock';
+  contextType?: string;
+  contextTitle?: string;
+};
 
 type NowPlayingProps = {
   album: Album;
@@ -14,12 +24,14 @@ type NowPlayingProps = {
   progress: number;
   total: number;
   highlighted: boolean;
+  queue: QueueItem[];
   onPrevious: () => void;
   onTogglePlay: () => void;
   onNext: () => void;
   onSeek: (nextSeconds: number) => void;
-  onQueueTrackSelect?: (track: Track) => void;
+  onQueueItemSelect?: (item: QueueItem) => void;
   isPlaylist?: boolean;
+  currentOverride?: CurrentOverride | null;
 };
 
 export function NowPlaying({
@@ -29,12 +41,14 @@ export function NowPlaying({
   progress,
   total,
   highlighted,
+  queue,
   onPrevious,
   onTogglePlay,
   onNext,
   onSeek,
-  onQueueTrackSelect,
-  isPlaylist
+  onQueueItemSelect,
+  isPlaylist,
+  currentOverride,
 }: NowPlayingProps) {
   const queueScrollRef = useRef<HTMLDivElement>(null);
   const scrollResetTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -53,15 +67,17 @@ export function NowPlaying({
   }
 
   const visualTheme = createMockAlbumTheme(album);
-  const currentIndex = album.tracks.findIndex(t => t.id === track.id);
-  const safeIndex = currentIndex >= 0 ? currentIndex : 0;
-  const trackCount = album.tracks.length;
-  const queueTracks = trackCount > 1
-    ? Array.from({ length: trackCount - 1 }, (_, i) =>
-        album.tracks[(safeIndex + 1 + i) % trackCount]
-      ).filter((t): t is NonNullable<typeof t> => t !== undefined)
-    : [];
-  const coverLabel = album.coverText.trim() || visualTheme.textOnCover;
+
+  const isSonos = currentOverride?.source === 'sonos';
+  const displayTitle    = isSonos ? currentOverride!.title  : track.title;
+  const displayArtist   = isSonos
+    ? (currentOverride!.artist || track.artist || album.artist)
+    : (track.artist ?? album.artist);
+  const displayAlbum    = isSonos ? currentOverride!.album  : (track.albumTitle ?? album.title);
+  const displayCoverUrl = isSonos ? currentOverride!.coverUrl : (track.albumCoverUrl ?? album.coverUrl);
+  const displayPlaylistName = isSonos && currentOverride!.contextTitle
+    ? currentOverride!.contextTitle
+    : album.title;
 
   return (
     <section
@@ -93,7 +109,7 @@ export function NowPlaying({
                 className="mb-4 truncate text-[0.56rem] uppercase tracking-[0.34em]"
                 style={{ color: themeColors.neutral.text.faint }}
               >
-                {album.title}
+                {displayPlaylistName}
               </p>
             )}
             <p
@@ -102,7 +118,7 @@ export function NowPlaying({
                 color: themeColors.neutral.text.faint
               }}
             >
-              {track.artist ?? album.artist}
+              {displayArtist}
             </p>
 
             <h2
@@ -111,7 +127,7 @@ export function NowPlaying({
                 color: themeColors.neutral.text.primary
               }}
             >
-              {track.title}
+              {displayTitle}
             </h2>
 
             <p
@@ -120,7 +136,7 @@ export function NowPlaying({
                 color: themeColors.neutral.text.soft
               }}
             >
-              {track.albumTitle ?? album.title}
+              {displayAlbum}
             </p>
           </div>
         </div>
@@ -164,10 +180,10 @@ export function NowPlaying({
                 background: visualTheme.ambientGradient
               }}
             >
-              {(track.albumCoverUrl ?? album.coverUrl) && (
+              {displayCoverUrl && (
                 <img
-                  src={(track.albumCoverUrl ?? album.coverUrl)!}
-                  alt={track.albumTitle ?? album.title}
+                  src={displayCoverUrl}
+                  alt=""
                   className="absolute inset-0 h-full w-full object-cover"
                   draggable={false}
                 />
@@ -182,22 +198,6 @@ export function NowPlaying({
                   ].join(', ')
                 }}
               />
-
-              {!(track.albumCoverUrl ?? album.coverUrl) && (
-                <div className="relative flex h-full items-center justify-center p-4">
-                  <span
-                    className="inline-flex items-center rounded-full border px-3 py-1 font-display text-[0.7rem] leading-none tracking-[0.2em]"
-                    style={{
-                      color: visualTheme.textOnCover,
-                      borderColor: 'rgba(255, 255, 255, 0.12)',
-                      backgroundColor: 'rgba(0, 0, 0, 0.28)',
-                      boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.06)'
-                    }}
-                  >
-                    {coverLabel}
-                  </span>
-                </div>
-              )}
             </div>
 
             <div
@@ -240,15 +240,15 @@ export function NowPlaying({
               />
             </div>
 
-            {queueTracks.length > 0 ? (
+            {queue.length > 0 ? (
               <div style={{ maxHeight: '5.6rem', overflow: 'hidden' }}>
                 <div ref={queueScrollRef} className="overflow-y-auto space-y-2.5" style={{ maxHeight: '5.6rem', marginRight: '-20px', paddingRight: '20px' }} onScroll={handleQueueScroll}>
-                  {queueTracks.map((qTrack, index) => (
+                  {queue.map((item, index) => (
                     <div
-                      key={qTrack.id}
+                      key={item.id}
                       className="grid cursor-pointer items-center gap-3"
                       style={{ gridTemplateColumns: '1.7rem 1fr 2.4rem' }}
-                      onClick={() => onQueueTrackSelect?.(qTrack)}
+                      onClick={() => onQueueItemSelect?.(item)}
                     >
                       <span
                         className="text-[0.58rem] tabular-nums"
@@ -256,7 +256,7 @@ export function NowPlaying({
                           color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
                         }}
                       >
-                        {String(qTrack.number).padStart(2, '0')}
+                        {String(index + 1).padStart(2, '0')}
                       </span>
                       <span
                         className="truncate text-[0.72rem] tracking-[0.02em]"
@@ -264,7 +264,7 @@ export function NowPlaying({
                           color: index === 0 ? themeColors.neutral.text.secondary : themeColors.neutral.text.soft
                         }}
                       >
-                        {qTrack.title}
+                        {item.title}
                       </span>
                       <span
                         className="text-right text-[0.58rem] tabular-nums"
@@ -272,7 +272,7 @@ export function NowPlaying({
                           color: index === 0 ? themeColors.neutral.text.soft : themeColors.neutral.text.subtle
                         }}
                       >
-                        {qTrack.duration}
+                        {item.durationFormatted}
                       </span>
                     </div>
                   ))}
